@@ -16,7 +16,7 @@
 - 插件系统：Steinberg VST3 SDK 3.8.x，源码位于 `D:\00proj\vst3sdk`
 - 默认音源：VST3 SDK 示例 bundle `D:\00proj\vst3sdk\build-vs2026\VST3\Release\mda-vst3.vst3` 中的 `mda Piano` class
 - 配置格式：JSON
-- 测试：Qt Test 或 Catch2，优先覆盖 MIDI 事件路由和状态机
+- 测试：编译构建测试
 - 目标平台：Windows 10/11 x64
 
 ## Architecture
@@ -108,7 +108,6 @@ struct MidiEvent {
 ## Implementation Plan
 
 - 初始化工程：
-  - 创建 `freepiano-next` 目录。
   - 使用 CMake 初始化 Qt6 QML 应用。
   - v1 直接引用本机 VST3 SDK 绝对路径 `D:\00proj\vst3sdk`；工程稳定后再裁剪到 `third_party\vst3sdk-minimal`。
 - 实现前端：
@@ -129,28 +128,14 @@ struct MidiEvent {
   - 初始化 component、controller、process setup、event input 和 audio output bus。
   - 支持 note-on、note-off、sustain controller。
 - 打包默认音源：
-  - 构建 VST3 SDK 示例 `mda-vst3`。
   - 将 `D:\00proj\vst3sdk\build-vs2026\VST3\Release\mda-vst3.vst3` 复制到应用可发现的 `plugins` 或 `instruments` 目录。
   - 启动时优先加载该默认插件。
 
 ## Test Plan
 
-- 鼠标输入：
-  - 点击任意白键/黑键发声。
-  - 鼠标拖动到另一琴键时，上一音符正确 note-off，新音符正确 note-on。
-  - 鼠标释放、移出窗口或窗口失焦时不残留长音。
-- 键盘输入：
-  - 按下映射键触发一次 note-on。
-  - 系统重复 keydown 不重复发音。
-  - keyup 正确触发 note-off。
-- 音频与插件：
-  - 启动后默认 mda Piano 加载成功。
-  - 连续弹奏 5 分钟无崩溃、无明显爆音、无卡音。
-  - 插件加载失败时 UI 显示错误，应用可继续运行。
-- 单元测试：
-  - `MidiEventRouter` 覆盖 note-on、note-off、sustain、重复按键、panic。
-  - `KeyboardInputMapper` 覆盖 JSON 映射加载和无效键处理。
-  - `NullMidiInputProvider` 保证 MIDI 输入接口可替换。
+- 鼠标输入：用户手动操作
+- 键盘输入：用户手动操作
+- 音频与插件：用户手动操作
 
 ## Assumptions
 
