@@ -1,5 +1,9 @@
 # Repository Guidelines
 
+## Agent 权限与安全约束
+
+- 允许修改当前工程目录下的代码与文件；对项目外的文件只读。
+
 ## Project Structure & Module Organization
 
 This repository currently contains project documentation and the initial implementation plan. Keep planning notes under `doc/`; `doc/freepiano-next-plan.md` is the source of truth for v1 architecture. `README.md` is reserved for user-facing overview content.
