@@ -5,7 +5,9 @@ Rectangle {
 
     required property int note
     required property bool blackKey
-    property bool pressed: false
+    property bool keyboardPressed: false
+    property bool mousePressed: false
+    readonly property bool pressed: mousePressed || keyboardPressed
 
     signal keyPressed(int note)
     signal keyReleased(int note)
@@ -16,23 +18,25 @@ Rectangle {
     border.width: 1
 
     MouseArea {
+        id: mouseArea
+
         anchors.fill: parent
         hoverEnabled: true
         onPressed: {
-            root.pressed = true
+            root.mousePressed = true
             root.keyPressed(root.note)
         }
         onReleased: {
-            root.pressed = false
+            root.mousePressed = false
             root.keyReleased(root.note)
         }
         onCanceled: {
-            root.pressed = false
+            root.mousePressed = false
             root.keyReleased(root.note)
         }
         onExited: {
-            if (pressed) {
-                root.pressed = false
+            if (mouseArea.pressed) {
+                root.mousePressed = false
                 root.keyReleased(root.note)
             }
         }

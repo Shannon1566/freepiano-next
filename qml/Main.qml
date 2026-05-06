@@ -31,6 +31,29 @@ ApplicationWindow {
 
         anchors.fill: parent
         focus: true
+
+        function setKeyboardNoteActive(note, active) {
+            if (activeKeyboardNotes[note] === active) {
+                return
+            }
+
+            const notes = ({})
+            for (const key in activeKeyboardNotes) {
+                notes[key] = activeKeyboardNotes[key]
+            }
+
+            if (active) {
+                notes[note] = true
+            } else {
+                delete notes[note]
+            }
+            activeKeyboardNotes = notes
+        }
+
+        function clearKeyboardNotes() {
+            activeKeyboardNotes = ({})
+        }
+
         Keys.onPressed: event => {
             if (event.isAutoRepeat) {
                 event.accepted = true
@@ -45,7 +68,7 @@ ApplicationWindow {
 
             const note = pianoController.keyboardMapper.noteForKey(event.key)
             if (note >= 0 && activeKeyboardNotes[note] !== true) {
-                activeKeyboardNotes[note] = true
+                setKeyboardNoteActive(note, true)
                 pianoController.noteOn(note, 100)
                 event.accepted = true
             }
@@ -64,7 +87,7 @@ ApplicationWindow {
 
             const note = pianoController.keyboardMapper.noteForKey(event.key)
             if (note >= 0) {
-                activeKeyboardNotes[note] = false
+                setKeyboardNoteActive(note, false)
                 pianoController.noteOff(note)
                 event.accepted = true
             }
@@ -125,7 +148,10 @@ ApplicationWindow {
 
                 Button {
                     text: qsTr("Panic")
-                    onClicked: pianoController.panic()
+                    onClicked: {
+                        pianoController.panic()
+                        focusScope.clearKeyboardNotes()
+                    }
                 }
             }
 
@@ -152,6 +178,7 @@ ApplicationWindow {
                             height: piano.height
                             note: modelData
                             blackKey: false
+                            keyboardPressed: activeKeyboardNotes[modelData] === true
                             onKeyPressed: note => pianoController.noteOn(note, 100)
                             onKeyReleased: note => pianoController.noteOff(note)
                         }
@@ -171,6 +198,7 @@ ApplicationWindow {
                         z: 2
                         note: modelData.note
                         blackKey: true
+                        keyboardPressed: activeKeyboardNotes[modelData.note] === true
                         onKeyPressed: note => pianoController.noteOn(note, 100)
                         onKeyReleased: note => pianoController.noteOff(note)
                     }
@@ -182,7 +210,7 @@ ApplicationWindow {
         onActiveFocusChanged: {
             if (!activeFocus) {
                 pianoController.panic()
-                activeKeyboardNotes = ({})
+                clearKeyboardNotes()
             }
         }
     }
