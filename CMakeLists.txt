@@ -1,0 +1,111 @@
+cmake_minimum_required(VERSION 3.27)
+
+project(freepiano-next VERSION 0.1.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+set(FREEPIANO_QT_PREFIX "D:/Qt/6.11.0/msvc2022_64" CACHE PATH "Qt 6 installation prefix")
+if(EXISTS "${FREEPIANO_QT_PREFIX}/lib/cmake/Qt6/Qt6Config.cmake")
+    list(PREPEND CMAKE_PREFIX_PATH "${FREEPIANO_QT_PREFIX}")
+endif()
+
+set(VST3_SDK_ROOT "${CMAKE_SOURCE_DIR}/third_party/vst3sdk" CACHE PATH "Steinberg VST3 SDK root")
+set(VST3_SDK_LIB_DIR "${VST3_SDK_ROOT}/lib/Release" CACHE PATH "Steinberg VST3 SDK binary library directory")
+set(DEFAULT_VST3_BUNDLE "${VST3_SDK_ROOT}/plugins/mda-vst3.vst3" CACHE PATH "Default mda Piano VST3 bundle")
+set(USER_VST_PLUGINS_DIR "${CMAKE_SOURCE_DIR}/vstplugs" CACHE PATH "Local third-party VST plug-in directory")
+
+find_package(Qt6 6.5 REQUIRED COMPONENTS Quick QuickControls2 Test)
+
+qt_standard_project_setup(REQUIRES 6.5)
+
+qt_add_executable(freepiano-next
+    src/main.cpp
+    src/audio/WasapiAudioEngine.cpp
+    src/audio/WasapiAudioEngine.h
+    src/core/PianoController.cpp
+    src/core/PianoController.h
+    src/input/IMidiInputProvider.h
+    src/input/KeyboardInputMapper.cpp
+    src/input/KeyboardInputMapper.h
+    src/input/NullMidiInputProvider.h
+    src/midi/MidiEvent.h
+    src/midi/MidiEventRouter.cpp
+    src/midi/MidiEventRouter.h
+    src/vst3/Vst3Host.cpp
+    src/vst3/Vst3Host.h
+    ${VST3_SDK_ROOT}/public.sdk/source/vst/hosting/plugprovider.cpp
+    ${VST3_SDK_ROOT}/public.sdk/source/vst/hosting/connectionproxy.cpp
+    ${VST3_SDK_ROOT}/public.sdk/source/vst/hosting/module_win32.cpp
+)
+
+target_compile_definitions(freepiano-next PRIVATE
+    FREEPIANO_DEFAULT_VST3_BUNDLE="${DEFAULT_VST3_BUNDLE}"
+    FREEPIANO_VST3_SDK_ROOT="${VST3_SDK_ROOT}"
+)
+
+target_include_directories(freepiano-next PRIVATE
+    src
+    ${VST3_SDK_ROOT}
+)
+
+target_link_libraries(freepiano-next PRIVATE
+    Qt6::Quick
+    Qt6::QuickControls2
+)
+
+if(WIN32)
+    target_link_libraries(freepiano-next PRIVATE
+        ole32
+        avrt
+        mmdevapi
+        winmm
+        ${VST3_SDK_LIB_DIR}/sdk_hosting.lib
+        ${VST3_SDK_LIB_DIR}/sdk_common.lib
+        ${VST3_SDK_LIB_DIR}/sdk.lib
+        ${VST3_SDK_LIB_DIR}/base.lib
+        ${VST3_SDK_LIB_DIR}/pluginterfaces.lib
+    )
+endif()
+
+if(EXISTS "${DEFAULT_VST3_BUNDLE}")
+    add_custom_command(TARGET freepiano-next POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:freepiano-next>/plugins"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${DEFAULT_VST3_BUNDLE}"
+            "$<TARGET_FILE_DIR:freepiano-next>/plugins/mda-vst3.vst3"
+        COMMENT "Copying default mda Piano VST3 bundle"
+    )
+endif()
+
+if(IS_DIRECTORY "${USER_VST_PLUGINS_DIR}")
+    add_custom_command(TARGET freepiano-next POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:freepiano-next>/plugins"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${USER_VST_PLUGINS_DIR}"
+            "$<TARGET_FILE_DIR:freepiano-next>/plugins"
+        COMMENT "Copying local third-party VST plug-ins"
+    )
+endif()
+
+qt_add_qml_module(freepiano-next
+    URI FreePiano
+    VERSION 1.0
+    QML_FILES
+        qml/Main.qml
+        qml/PianoKey.qml
+)
+
+enable_testing()
+
+qt_add_executable(test_midi_event_router
+    tests/test_midi_event_router.cpp
+    src/midi/MidiEvent.h
+    src/midi/MidiEventRouter.cpp
+    src/midi/MidiEventRouter.h
+)
+target_include_directories(test_midi_event_router PRIVATE src)
+target_link_libraries(test_midi_event_router PRIVATE Qt6::Test)
+
+add_test(NAME midi_event_router COMMAND test_midi_event_router)

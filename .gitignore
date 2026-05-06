@@ -1,0 +1,8 @@
+build/
+out/
+*.user
+*.suo
+*.vcxproj.user
+.qt/
+vstplugs/*
+!vstplugs/.gitkeep

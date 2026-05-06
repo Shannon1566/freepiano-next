@@ -20,7 +20,7 @@ cmake --build build --config Debug
 ctest --test-dir build -C Debug
 ```
 
-Use CMake 3.27+ and Qt 6.5+. The planned VST3 SDK is local at `D:\00proj\vst3sdk`; avoid new machine-specific paths unless documented.
+Use CMake 3.27+ and Qt 6.5+. The VST3 SDK files used by the project are vendored under `third_party/vst3sdk`; avoid new machine-specific paths unless documented.
 
 ## Coding Style & Naming Conventions
 

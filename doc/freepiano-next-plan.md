@@ -13,8 +13,8 @@
 - 前端：Qt 6.5+、Qt Quick、QML、Qt Quick Controls Basic
 - 后端集成：Qt C++ `QObject` / `Q_PROPERTY` / `Q_INVOKABLE`
 - 音频输出：Windows WASAPI shared mode
-- 插件系统：Steinberg VST3 SDK 3.8.x，源码位于 `D:\00proj\vst3sdk`
-- 默认音源：VST3 SDK 示例 bundle `D:\00proj\vst3sdk\build-vs2026\VST3\Release\mda-vst3.vst3` 中的 `mda Piano` class
+- 插件系统：Steinberg VST3 SDK 3.8.x，仓库化文件位于 `third_party/vst3sdk`
+- 默认音源：VST3 SDK 示例 bundle `third_party/vst3sdk/plugins/mda-vst3.vst3` 中的 `mda Piano` class
 - 配置格式：JSON
 - 测试：编译构建测试
 - 目标平台：Windows 10/11 x64
@@ -39,23 +39,23 @@
   - 音频线程只读取事件队列并调用 VST3 process，不访问 QML、不做文件 IO、不动态分配内存。
 - `vst3`
   - `Vst3Host`：加载、初始化和驱动 VST3 Instrument。
-  - 第一版只加载默认 bundle `D:\00proj\vst3sdk\build-vs2026\VST3\Release\mda-vst3.vst3`，并选择其中的 `mda Piano` class。
+  - 第一版只加载默认 bundle `third_party/vst3sdk/plugins/mda-vst3.vst3`，并选择其中的 `mda Piano` class。
   - 后续再扩展用户选择插件和系统插件扫描。
 
-## Local VST3 Paths
+## Vendored VST3 Paths
 
-- VST3 SDK 根目录：`D:\00proj\vst3sdk`
-- 已生成的 VS2026 构建目录：`D:\00proj\vst3sdk\build-vs2026`
-- VST3 示例插件产物目录：`D:\00proj\vst3sdk\build-vs2026\VST3\Release`
-- 默认音源 bundle：`D:\00proj\vst3sdk\build-vs2026\VST3\Release\mda-vst3.vst3`
-- VST3 host 工具产物目录：`D:\00proj\vst3sdk\build-vs2026\bin\Release`
-- VST3 静态库产物目录：`D:\00proj\vst3sdk\build-vs2026\lib\Release`
-- SDK 必要接口目录：`D:\00proj\vst3sdk\pluginterfaces`
-- SDK 基础工具目录：`D:\00proj\vst3sdk\base`
-- VST3 hosting 源码目录：`D:\00proj\vst3sdk\public.sdk\source\vst\hosting`
-- VST3 utility 源码目录：`D:\00proj\vst3sdk\public.sdk\source\vst\utility`
-- 可参考的 editor host 示例：`D:\00proj\vst3sdk\public.sdk\samples\vst-hosting\editorhost`
-- 可参考的 audio host 示例：`D:\00proj\vst3sdk\public.sdk\samples\vst-hosting\audiohost`
+- VST3 SDK 根目录：`third_party/vst3sdk`
+- 默认音源 bundle：`third_party/vst3sdk/plugins/mda-vst3.vst3`
+- VST3 静态库目录：`third_party/vst3sdk/lib/Release`
+- SDK 必要接口目录：`third_party/vst3sdk/pluginterfaces`
+- SDK 基础工具目录：`third_party/vst3sdk/base`
+- VST3 hosting 源码目录：`third_party/vst3sdk/public.sdk/source/vst/hosting`
+
+## Local VST Plug-in Paths
+
+- 本机第三方 VST 音源目录：`vstplugs`
+- `vstplugs` 内容不纳入 git，由开发者本机自行放置。
+- 构建后将 `vstplugs` 内容复制到应用运行目录的 `plugins` 子目录。
 
 ## Public Interfaces
 
@@ -109,7 +109,7 @@ struct MidiEvent {
 
 - 初始化工程：
   - 使用 CMake 初始化 Qt6 QML 应用。
-  - v1 直接引用本机 VST3 SDK 绝对路径 `D:\00proj\vst3sdk`；工程稳定后再裁剪到 `third_party\vst3sdk-minimal`。
+  - v1 使用仓库内 `third_party/vst3sdk`，避免依赖本机绝对路径。
 - 实现前端：
   - QML 首屏直接显示可弹奏钢琴界面。
   - 白键和黑键使用稳定尺寸布局，鼠标按下触发 `noteOn`，释放触发 `noteOff`。
@@ -123,12 +123,13 @@ struct MidiEvent {
   - 默认稳定优先，buffer 目标约 10-30ms。
   - 音频回调中拉取 MIDI 事件并调用 VST3 process。
 - 实现 VST3 Host：
-  - 加载 `D:\00proj\vst3sdk\build-vs2026\VST3\Release\mda-vst3.vst3`。
+  - 加载 `third_party/vst3sdk/plugins/mda-vst3.vst3`。
   - 从 bundle class list 中选择 `mda Piano` 对应的 Instrument/AudioEffect class。
   - 初始化 component、controller、process setup、event input 和 audio output bus。
   - 支持 note-on、note-off、sustain controller。
 - 打包默认音源：
-  - 将 `D:\00proj\vst3sdk\build-vs2026\VST3\Release\mda-vst3.vst3` 复制到应用可发现的 `plugins` 或 `instruments` 目录。
+  - 将 `third_party/vst3sdk/plugins/mda-vst3.vst3` 复制到应用可发现的 `plugins` 或 `instruments` 目录。
+  - 将本机 `vstplugs` 中的第三方音源复制到应用运行目录的 `plugins` 目录。
   - 启动时优先加载该默认插件。
 
 ## Test Plan
