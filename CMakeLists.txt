@@ -10,6 +10,8 @@ set(FREEPIANO_QT_PREFIX "D:/Qt/6.11.0/msvc2022_64" CACHE PATH "Qt 6 installation
 if(EXISTS "${FREEPIANO_QT_PREFIX}/lib/cmake/Qt6/Qt6Config.cmake")
     list(PREPEND CMAKE_PREFIX_PATH "${FREEPIANO_QT_PREFIX}")
 endif()
+set(FREEPIANO_WINDEPLOYQT "${FREEPIANO_QT_PREFIX}/bin/windeployqt.exe" CACHE FILEPATH "Qt windeployqt executable")
+option(FREEPIANO_DEPLOY_QT_RUNTIME "Run windeployqt after building freepiano-next" ON)
 
 set(VST3_SDK_ROOT "${CMAKE_SOURCE_DIR}/third_party/vst3sdk" CACHE PATH "Steinberg VST3 SDK root")
 set(VST3_SDK_LIB_DIR "${VST3_SDK_ROOT}/lib/Release" CACHE PATH "Steinberg VST3 SDK binary library directory")
@@ -102,6 +104,21 @@ qt_add_qml_module(freepiano-next
         qml/PianoKey.qml
 )
 
+if(WIN32 AND FREEPIANO_DEPLOY_QT_RUNTIME)
+    if(EXISTS "${FREEPIANO_WINDEPLOYQT}")
+        add_custom_command(TARGET freepiano-next POST_BUILD
+            COMMAND "${FREEPIANO_WINDEPLOYQT}"
+                --dir "$<TARGET_FILE_DIR:freepiano-next>"
+                --qmldir "${CMAKE_SOURCE_DIR}/qml"
+                "$<TARGET_FILE:freepiano-next>"
+            COMMENT "Deploying Qt runtime dependencies"
+            VERBATIM
+        )
+    else()
+        message(WARNING "windeployqt not found: ${FREEPIANO_WINDEPLOYQT}")
+    endif()
+endif()
+
 enable_testing()
 
 qt_add_executable(test_midi_event_router
@@ -112,5 +129,15 @@ qt_add_executable(test_midi_event_router
 )
 target_include_directories(test_midi_event_router PRIVATE src)
 target_link_libraries(test_midi_event_router PRIVATE Qt6::Test)
+
+if(WIN32 AND FREEPIANO_DEPLOY_QT_RUNTIME AND EXISTS "${FREEPIANO_WINDEPLOYQT}")
+    add_custom_command(TARGET test_midi_event_router POST_BUILD
+        COMMAND "${FREEPIANO_WINDEPLOYQT}"
+            --dir "$<TARGET_FILE_DIR:test_midi_event_router>"
+            "$<TARGET_FILE:test_midi_event_router>"
+        COMMENT "Deploying Qt test runtime dependencies"
+        VERBATIM
+    )
+endif()
 
 add_test(NAME midi_event_router COMMAND test_midi_event_router)
