@@ -33,6 +33,11 @@ qt_add_executable(freepiano-next
     src/midi/MidiEvent.h
     src/midi/MidiEventRouter.cpp
     src/midi/MidiEventRouter.h
+    src/vst2/Vst2Host.cpp
+    src/vst2/Vst2Host.h
+    src/vst2/aeffect.h
+    src/vst2/aeffectx.h
+    src/vst2/vstfxstore.h
     src/vst3/Vst3Host.cpp
     src/vst3/Vst3Host.h
     ${VST3_SDK_ROOT}/public.sdk/source/vst/hosting/plugprovider.cpp

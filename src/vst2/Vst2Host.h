@@ -8,24 +8,16 @@
 
 #include "midi/MidiEvent.h"
 
-class Vst3Host : public QObject
+class Vst2Host : public QObject
 {
     Q_OBJECT
 
 public:
-    struct InstrumentClass {
-        QString name;
-        QString vendor;
-        QString subCategories;
-    };
+    explicit Vst2Host(QObject *parent = nullptr);
+    ~Vst2Host() override;
 
-    explicit Vst3Host(QObject *parent = nullptr);
-    ~Vst3Host() override;
-
-    static QVector<InstrumentClass> scanInstrumentClasses(const QString &bundlePath);
-
-    bool loadDefaultInstrument();
-    bool loadInstrument(const QString &bundlePath, const QString &className, const QString &displayName);
+    bool loadInstrument(const QString &dllPath);
+    void unloadInstrument();
     bool isInstrumentLoaded() const;
     QString statusText() const;
     void processEvents(const QVector<MidiEvent> &events);

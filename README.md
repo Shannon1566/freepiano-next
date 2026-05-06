@@ -15,7 +15,6 @@ VST3 SDK 使用 MIT License；本仓库保留了原始版权声明和 license �
 ## 构建
 
 ```powershell
-$env:QTFRAMEWORK_BYPASS_LICENSE_CHECK='1'
 & 'D:\Program Files\VS\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe' -S . -B build
 & 'D:\Program Files\VS\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe' --build build --config Release
 ```

@@ -1,5 +1,6 @@
 #include "audio/WasapiAudioEngine.h"
 
+#include "vst2/Vst2Host.h"
 #include "vst3/Vst3Host.h"
 
 #ifdef Q_OS_WIN
@@ -72,6 +73,16 @@ QString WasapiAudioEngine::statusText() const
 void WasapiAudioEngine::setVst3Host(Vst3Host *host)
 {
     m_vst3Host = host;
+}
+
+void WasapiAudioEngine::setVst2Host(Vst2Host *host)
+{
+    m_vst2Host = host;
+}
+
+void WasapiAudioEngine::setUseVst2Host(bool useVst2Host)
+{
+    m_useVst2Host = useVst2Host;
 }
 
 void WasapiAudioEngine::submitEvents(const QVector<MidiEvent> &events)
@@ -156,7 +167,9 @@ void WasapiAudioEngine::audioLoop()
 
         auto *out = reinterpret_cast<float *>(data);
         const int channels = mixFormat->nChannels;
-        if (m_vst3Host) {
+        if (m_useVst2Host && m_vst2Host) {
+            m_vst2Host->render(out, static_cast<int>(framesToWrite), channels, m_sampleRate);
+        } else if (m_vst3Host) {
             m_vst3Host->render(out, static_cast<int>(framesToWrite), channels, m_sampleRate);
         } else {
             std::fill(out, out + framesToWrite * channels, 0.0f);

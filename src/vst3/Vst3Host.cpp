@@ -25,9 +25,26 @@
 #endif
 
 namespace {
-bool isPianoClass(const VST3::Hosting::ClassInfo &classInfo)
+bool hasInstrumentSubCategory(const VST3::Hosting::ClassInfo &classInfo)
+{
+    for (const auto &subCategory : classInfo.subCategories()) {
+        if (subCategory == Steinberg::Vst::PlugType::kInstrument
+            || subCategory.find("Instrument") == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool isInstrumentClass(const VST3::Hosting::ClassInfo &classInfo)
 {
     return classInfo.category() == kVstAudioEffectClass
+        && hasInstrumentSubCategory(classInfo);
+}
+
+bool isDefaultPianoClass(const VST3::Hosting::ClassInfo &classInfo)
+{
+    return isInstrumentClass(classInfo)
         && classInfo.name().find("Piano") != std::string::npos;
 }
 
@@ -134,6 +151,28 @@ struct Vst3Host::Impl {
         return true;
     }
 
+    void resetPluginState()
+    {
+        if (processing) {
+            processor->setProcessing(false);
+            if (component) {
+                component->setActive(false);
+            }
+            processing = false;
+        }
+
+        pendingEvents.clear();
+        eventList.clear();
+        inputParameterChanges.clearQueue();
+        processor = nullptr;
+        controller = nullptr;
+        component = nullptr;
+        plugProvider = nullptr;
+        module = nullptr;
+        sampleRate = 0.0;
+        blockSize = 0;
+    }
+
 };
 
 Vst3Host::Vst3Host(QObject *parent)
@@ -145,18 +184,56 @@ Vst3Host::Vst3Host(QObject *parent)
 
 Vst3Host::~Vst3Host() = default;
 
+QVector<Vst3Host::InstrumentClass> Vst3Host::scanInstrumentClasses(const QString &bundlePath)
+{
+    QVector<InstrumentClass> instruments;
+    const QFileInfo bundleInfo(bundlePath);
+    if (!bundleInfo.exists() || !bundleInfo.isDir()) {
+        return instruments;
+    }
+
+    std::string error;
+    const auto module = VST3::Hosting::Module::create(bundleInfo.absoluteFilePath().toStdString(), error);
+    if (!module) {
+        return instruments;
+    }
+
+    const auto factory = module->getFactory();
+    for (const auto &classInfo : factory.classInfos()) {
+        if (!isInstrumentClass(classInfo)) {
+            continue;
+        }
+
+        instruments.append({
+            QString::fromStdString(classInfo.name()),
+            QString::fromStdString(classInfo.vendor()),
+            QString::fromStdString(classInfo.subCategoriesString()),
+        });
+    }
+
+    return instruments;
+}
+
 bool Vst3Host::loadDefaultInstrument()
 {
-    const QFileInfo bundleInfo(QStringLiteral(FREEPIANO_DEFAULT_VST3_BUNDLE));
-    if (!bundleInfo.exists() || !bundleInfo.isDir()) {
+    return loadInstrument(QStringLiteral(FREEPIANO_DEFAULT_VST3_BUNDLE),
+                          QString(),
+                          QStringLiteral("mda Piano"));
+}
+
+bool Vst3Host::loadInstrument(const QString &bundlePath, const QString &className, const QString &displayName)
+{
+    const QFileInfo selectedBundleInfo(bundlePath);
+    if (!selectedBundleInfo.exists() || !selectedBundleInfo.isDir()) {
         setInstrumentLoaded(false);
-        setStatusText(QStringLiteral("Default mda Piano VST3 bundle not found"));
+        setStatusText(QStringLiteral("VST3 bundle not found: %1").arg(bundlePath));
         return false;
     }
 
     QMutexLocker locker(&m_impl->mutex);
+    m_impl->resetPluginState();
     std::string error;
-    m_impl->module = VST3::Hosting::Module::create(bundleInfo.absoluteFilePath().toStdString(), error);
+    m_impl->module = VST3::Hosting::Module::create(selectedBundleInfo.absoluteFilePath().toStdString(), error);
     if (!m_impl->module) {
         setInstrumentLoaded(false);
         setStatusText(QStringLiteral("Failed to load VST3 module: %1").arg(QString::fromStdString(error)));
@@ -166,23 +243,42 @@ bool Vst3Host::loadDefaultInstrument()
     const auto factory = m_impl->module->getFactory();
     VST3::Hosting::ClassInfo selectedClass;
     bool found = false;
-    for (const auto &classInfo : factory.classInfos()) {
-        if (isPianoClass(classInfo)) {
-            selectedClass = classInfo;
-            found = true;
-            break;
+    if (!className.isEmpty()) {
+        for (const auto &classInfo : factory.classInfos()) {
+            if (QString::fromStdString(classInfo.name()) == className && isInstrumentClass(classInfo)) {
+                selectedClass = classInfo;
+                found = true;
+                break;
+            }
+        }
+    } else {
+        for (const auto &classInfo : factory.classInfos()) {
+            if (isDefaultPianoClass(classInfo)) {
+                selectedClass = classInfo;
+                found = true;
+                break;
+            }
+        }
+    }
+    if (!found) {
+        for (const auto &classInfo : factory.classInfos()) {
+            if (className.isEmpty() && isInstrumentClass(classInfo)) {
+                selectedClass = classInfo;
+                found = true;
+                break;
+            }
         }
     }
     if (!found) {
         setInstrumentLoaded(false);
-        setStatusText(QStringLiteral("mda Piano class not found in VST3 bundle"));
+        setStatusText(QStringLiteral("No playable instrument class found in VST3 bundle"));
         return false;
     }
 
     m_impl->plugProvider = Steinberg::owned(new Steinberg::Vst::PlugProvider(factory, selectedClass, true));
     if (!m_impl->plugProvider->initialize()) {
         setInstrumentLoaded(false);
-        setStatusText(QStringLiteral("Failed to initialize mda Piano VST3"));
+        setStatusText(QStringLiteral("Failed to initialize VST3 instrument"));
         return false;
     }
 
@@ -191,7 +287,7 @@ bool Vst3Host::loadDefaultInstrument()
     m_impl->processor = Steinberg::FUnknownPtr<Steinberg::Vst::IAudioProcessor>(m_impl->component);
     if (!m_impl->component || !m_impl->processor) {
         setInstrumentLoaded(false);
-        setStatusText(QStringLiteral("mda Piano VST3 has no audio processor"));
+        setStatusText(QStringLiteral("VST3 instrument has no audio processor"));
         return false;
     }
 
@@ -205,7 +301,10 @@ bool Vst3Host::loadDefaultInstrument()
     }
 
     setInstrumentLoaded(true);
-    setStatusText(QStringLiteral("mda Piano VST3 loaded"));
+    const QString loadedName = displayName.isEmpty()
+        ? QString::fromStdString(selectedClass.name())
+        : displayName;
+    setStatusText(QStringLiteral("%1 loaded").arg(loadedName));
     return true;
 }
 

@@ -86,6 +86,38 @@ ApplicationWindow {
                     color: "#0f172a"
                 }
 
+                ComboBox {
+                    id: instrumentBox
+
+                    Layout.preferredWidth: 240
+                    model: pianoController.availableInstruments
+                    currentIndex: pianoController.currentInstrumentIndex
+                    textRole: ""
+                    enabled: count > 0
+                    onActivated: index => {
+                        pianoController.loadInstrument(index)
+                        focusScope.forceActiveFocus()
+                    }
+
+                    Connections {
+                        target: pianoController
+                        function onCurrentInstrumentChanged() {
+                            instrumentBox.currentIndex = pianoController.currentInstrumentIndex
+                        }
+                        function onAvailableInstrumentsChanged() {
+                            instrumentBox.currentIndex = pianoController.currentInstrumentIndex
+                        }
+                    }
+                }
+
+                Button {
+                    text: qsTr("Refresh")
+                    onClicked: {
+                        pianoController.refreshInstruments()
+                        focusScope.forceActiveFocus()
+                    }
+                }
+
                 Button {
                     text: qsTr("Load")
                     onClicked: pianoController.loadDefaultInstrument()
