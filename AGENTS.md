@@ -12,15 +12,9 @@ The planned application is a Windows x64 virtual piano built with Qt 6/QML and C
 
 ## Build, Test, and Development Commands
 
-No build files are committed yet. Once CMake is added, prefer an out-of-source build:
+never run cmake directly from a normal shell.
 
-```powershell
-cmake -S . -B build -G "Visual Studio 18 2026" -A x64
-cmake --build build --config Debug
-ctest --test-dir build -C Debug
-```
-
-Use CMake 3.27+ and Qt 6.5+. The VST3 SDK files used by the project are vendored under `third_party/vst3sdk`; avoid new machine-specific paths unless documented.
+运行`build.bat`构建项目
 
 ## Coding Style & Naming Conventions
 
