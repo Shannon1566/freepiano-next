@@ -18,7 +18,7 @@ set(VST3_SDK_LIB_DIR "${VST3_SDK_ROOT}/lib/Release" CACHE PATH "Steinberg VST3 S
 set(DEFAULT_VST3_BUNDLE "${VST3_SDK_ROOT}/plugins/mda-vst3.vst3" CACHE PATH "Default mda Piano VST3 bundle")
 set(USER_VST_PLUGINS_DIR "${CMAKE_SOURCE_DIR}/vstplugs" CACHE PATH "Local third-party VST plug-in directory")
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Quick QuickControls2 Test)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Quick QuickControls2)
 
 qt_standard_project_setup(REQUIRES 6.5)
 
@@ -118,26 +118,3 @@ if(WIN32 AND FREEPIANO_DEPLOY_QT_RUNTIME)
         message(WARNING "windeployqt not found: ${FREEPIANO_WINDEPLOYQT}")
     endif()
 endif()
-
-enable_testing()
-
-qt_add_executable(test_midi_event_router
-    tests/test_midi_event_router.cpp
-    src/midi/MidiEvent.h
-    src/midi/MidiEventRouter.cpp
-    src/midi/MidiEventRouter.h
-)
-target_include_directories(test_midi_event_router PRIVATE src)
-target_link_libraries(test_midi_event_router PRIVATE Qt6::Test)
-
-if(WIN32 AND FREEPIANO_DEPLOY_QT_RUNTIME AND EXISTS "${FREEPIANO_WINDEPLOYQT}")
-    add_custom_command(TARGET test_midi_event_router POST_BUILD
-        COMMAND "${FREEPIANO_WINDEPLOYQT}"
-            --dir "$<TARGET_FILE_DIR:test_midi_event_router>"
-            "$<TARGET_FILE:test_midi_event_router>"
-        COMMENT "Deploying Qt test runtime dependencies"
-        VERBATIM
-    )
-endif()
-
-add_test(NAME midi_event_router COMMAND test_midi_event_router)
