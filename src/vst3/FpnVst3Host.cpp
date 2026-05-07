@@ -1,4 +1,4 @@
-#include "vst3/Vst3Host.h"
+#include "vst3/FpnVst3Host.h"
 
 #include <QFileInfo>
 #include <QMutex>
@@ -48,27 +48,27 @@ bool isDefaultPianoClass(const VST3::Hosting::ClassInfo &classInfo)
         && classInfo.name().find("Piano") != std::string::npos;
 }
 
-Steinberg::Vst::Event makeNoteEvent(const MidiEvent &midiEvent)
+Steinberg::Vst::Event makeNoteEvent(const FpnMidiEvent &fpnMidiEvent)
 {
     Steinberg::Vst::Event event {};
     event.busIndex = 0;
-    event.sampleOffset = static_cast<Steinberg::int32>(midiEvent.sampleOffset);
+    event.sampleOffset = static_cast<Steinberg::int32>(fpnMidiEvent.fpnSampleOffset);
     event.ppqPosition = 0;
     event.flags = Steinberg::Vst::Event::kIsLive;
 
-    const int status = midiEvent.status & 0xF0;
-    if (status == 0x90 && midiEvent.data2 > 0) {
+    const int fpnStatus = fpnMidiEvent.fpnStatus & 0xF0;
+    if (fpnStatus == 0x90 && fpnMidiEvent.fpnData2 > 0) {
         event.type = Steinberg::Vst::Event::kNoteOnEvent;
         event.noteOn.channel = 0;
-        event.noteOn.pitch = midiEvent.data1;
+        event.noteOn.pitch = fpnMidiEvent.fpnData1;
         event.noteOn.tuning = 0.0f;
-        event.noteOn.velocity = std::clamp(static_cast<float>(midiEvent.data2) / 127.0f, 0.0f, 1.0f);
+        event.noteOn.velocity = std::clamp(static_cast<float>(fpnMidiEvent.fpnData2) / 127.0f, 0.0f, 1.0f);
         event.noteOn.length = 0;
         event.noteOn.noteId = -1;
     } else {
         event.type = Steinberg::Vst::Event::kNoteOffEvent;
         event.noteOff.channel = 0;
-        event.noteOff.pitch = midiEvent.data1;
+        event.noteOff.pitch = fpnMidiEvent.fpnData1;
         event.noteOff.velocity = 0.0f;
         event.noteOff.noteId = -1;
         event.noteOff.tuning = 0.0f;
@@ -79,7 +79,7 @@ Steinberg::Vst::Event makeNoteEvent(const MidiEvent &midiEvent)
 
 }
 
-struct Vst3Host::Impl {
+struct FpnVst3Host::FpnImpl {
     QMutex mutex;
 
     Steinberg::IPtr<Steinberg::Vst::HostApplication> hostApplication;
@@ -92,12 +92,12 @@ struct Vst3Host::Impl {
     Steinberg::Vst::EventList eventList {256};
     Steinberg::Vst::ParameterChanges inputParameterChanges;
     Steinberg::Vst::ProcessContext processContext {};
-    QVector<MidiEvent> pendingEvents;
+    QVector<FpnMidiEvent> pendingEvents;
     double sampleRate = 0.0;
     int blockSize = 0;
     bool processing = false;
 
-    Impl()
+    FpnImpl()
         : hostApplication(Steinberg::owned(new Steinberg::Vst::HostApplication()))
     {
         Steinberg::Vst::PluginContextFactory::instance().setPluginContext(hostApplication);
@@ -107,7 +107,7 @@ struct Vst3Host::Impl {
         processContext.tempo = 120.0;
     }
 
-    ~Impl()
+    ~FpnImpl()
     {
         Steinberg::Vst::PluginContextFactory::instance().setPluginContext(nullptr);
     }
@@ -175,18 +175,18 @@ struct Vst3Host::Impl {
 
 };
 
-Vst3Host::Vst3Host(QObject *parent)
+FpnVst3Host::FpnVst3Host(QObject *parent)
     : QObject(parent)
-    , m_impl(std::make_unique<Impl>())
-    , m_statusText(QStringLiteral("Instrument not loaded"))
+    , m_fpnImpl(std::make_unique<FpnImpl>())
+    , m_fpnStatusText(QStringLiteral("Instrument not loaded"))
 {
 }
 
-Vst3Host::~Vst3Host() = default;
+FpnVst3Host::~FpnVst3Host() = default;
 
-QVector<Vst3Host::InstrumentClass> Vst3Host::scanInstrumentClasses(const QString &bundlePath)
+QVector<FpnVst3Host::FpnInstrumentClass> FpnVst3Host::fpnScanInstrumentClasses(const QString &bundlePath)
 {
-    QVector<InstrumentClass> instruments;
+    QVector<FpnInstrumentClass> instruments;
     const QFileInfo bundleInfo(bundlePath);
     if (!bundleInfo.exists() || !bundleInfo.isDir()) {
         return instruments;
@@ -214,33 +214,33 @@ QVector<Vst3Host::InstrumentClass> Vst3Host::scanInstrumentClasses(const QString
     return instruments;
 }
 
-bool Vst3Host::loadDefaultInstrument()
+bool FpnVst3Host::fpnLoadDefaultInstrument()
 {
-    return loadInstrument(QStringLiteral(FREEPIANO_DEFAULT_VST3_BUNDLE),
+    return fpnLoadInstrument(QStringLiteral(FREEPIANO_DEFAULT_VST3_BUNDLE),
                           QString(),
                           QStringLiteral("mda Piano"));
 }
 
-bool Vst3Host::loadInstrument(const QString &bundlePath, const QString &className, const QString &displayName)
+bool FpnVst3Host::fpnLoadInstrument(const QString &bundlePath, const QString &className, const QString &displayName)
 {
     const QFileInfo selectedBundleInfo(bundlePath);
     if (!selectedBundleInfo.exists() || !selectedBundleInfo.isDir()) {
-        setInstrumentLoaded(false);
-        setStatusText(QStringLiteral("VST3 bundle not found: %1").arg(bundlePath));
+        fpnSetInstrumentLoaded(false);
+        fpnSetStatusText(QStringLiteral("VST3 bundle not found: %1").arg(bundlePath));
         return false;
     }
 
-    QMutexLocker locker(&m_impl->mutex);
-    m_impl->resetPluginState();
+    QMutexLocker locker(&m_fpnImpl->mutex);
+    m_fpnImpl->resetPluginState();
     std::string error;
-    m_impl->module = VST3::Hosting::Module::create(selectedBundleInfo.absoluteFilePath().toStdString(), error);
-    if (!m_impl->module) {
-        setInstrumentLoaded(false);
-        setStatusText(QStringLiteral("Failed to load VST3 module: %1").arg(QString::fromStdString(error)));
+    m_fpnImpl->module = VST3::Hosting::Module::create(selectedBundleInfo.absoluteFilePath().toStdString(), error);
+    if (!m_fpnImpl->module) {
+        fpnSetInstrumentLoaded(false);
+        fpnSetStatusText(QStringLiteral("Failed to load VST3 module: %1").arg(QString::fromStdString(error)));
         return false;
     }
 
-    const auto factory = m_impl->module->getFactory();
+    const auto factory = m_fpnImpl->module->getFactory();
     VST3::Hosting::ClassInfo selectedClass;
     bool found = false;
     if (!className.isEmpty()) {
@@ -270,98 +270,98 @@ bool Vst3Host::loadInstrument(const QString &bundlePath, const QString &classNam
         }
     }
     if (!found) {
-        setInstrumentLoaded(false);
-        setStatusText(QStringLiteral("No playable instrument class found in VST3 bundle"));
+        fpnSetInstrumentLoaded(false);
+        fpnSetStatusText(QStringLiteral("No playable instrument class found in VST3 bundle"));
         return false;
     }
 
-    m_impl->plugProvider = Steinberg::owned(new Steinberg::Vst::PlugProvider(factory, selectedClass, true));
-    if (!m_impl->plugProvider->initialize()) {
-        setInstrumentLoaded(false);
-        setStatusText(QStringLiteral("Failed to initialize VST3 instrument"));
+    m_fpnImpl->plugProvider = Steinberg::owned(new Steinberg::Vst::PlugProvider(factory, selectedClass, true));
+    if (!m_fpnImpl->plugProvider->initialize()) {
+        fpnSetInstrumentLoaded(false);
+        fpnSetStatusText(QStringLiteral("Failed to initialize VST3 instrument"));
         return false;
     }
 
-    m_impl->component = Steinberg::owned(m_impl->plugProvider->getComponent());
-    m_impl->controller = Steinberg::owned(m_impl->plugProvider->getController());
-    m_impl->processor = Steinberg::FUnknownPtr<Steinberg::Vst::IAudioProcessor>(m_impl->component);
-    if (!m_impl->component || !m_impl->processor) {
-        setInstrumentLoaded(false);
-        setStatusText(QStringLiteral("VST3 instrument has no audio processor"));
+    m_fpnImpl->component = Steinberg::owned(m_fpnImpl->plugProvider->getComponent());
+    m_fpnImpl->controller = Steinberg::owned(m_fpnImpl->plugProvider->getController());
+    m_fpnImpl->processor = Steinberg::FUnknownPtr<Steinberg::Vst::IAudioProcessor>(m_fpnImpl->component);
+    if (!m_fpnImpl->component || !m_fpnImpl->processor) {
+        fpnSetInstrumentLoaded(false);
+        fpnSetStatusText(QStringLiteral("VST3 instrument has no audio processor"));
         return false;
     }
 
-    const Steinberg::int32 audioOutputBuses = m_impl->component->getBusCount(Steinberg::Vst::kAudio, Steinberg::Vst::kOutput);
+    const Steinberg::int32 audioOutputBuses = m_fpnImpl->component->getBusCount(Steinberg::Vst::kAudio, Steinberg::Vst::kOutput);
     for (Steinberg::int32 bus = 0; bus < audioOutputBuses; ++bus) {
-        m_impl->component->activateBus(Steinberg::Vst::kAudio, Steinberg::Vst::kOutput, bus, true);
+        m_fpnImpl->component->activateBus(Steinberg::Vst::kAudio, Steinberg::Vst::kOutput, bus, true);
     }
-    const Steinberg::int32 eventInputBuses = m_impl->component->getBusCount(Steinberg::Vst::kEvent, Steinberg::Vst::kInput);
+    const Steinberg::int32 eventInputBuses = m_fpnImpl->component->getBusCount(Steinberg::Vst::kEvent, Steinberg::Vst::kInput);
     for (Steinberg::int32 bus = 0; bus < eventInputBuses; ++bus) {
-        m_impl->component->activateBus(Steinberg::Vst::kEvent, Steinberg::Vst::kInput, bus, true);
+        m_fpnImpl->component->activateBus(Steinberg::Vst::kEvent, Steinberg::Vst::kInput, bus, true);
     }
 
-    setInstrumentLoaded(true);
+    fpnSetInstrumentLoaded(true);
     const QString loadedName = displayName.isEmpty()
         ? QString::fromStdString(selectedClass.name())
         : displayName;
-    setStatusText(QStringLiteral("%1 loaded").arg(loadedName));
+    fpnSetStatusText(QStringLiteral("%1 loaded").arg(loadedName));
     return true;
 }
 
-bool Vst3Host::isInstrumentLoaded() const
+bool FpnVst3Host::fpnIsInstrumentLoaded() const
 {
-    return m_instrumentLoaded;
+    return m_fpnInstrumentLoaded;
 }
 
-QString Vst3Host::statusText() const
+QString FpnVst3Host::fpnStatusText() const
 {
-    return m_statusText;
+    return m_fpnStatusText;
 }
 
-void Vst3Host::processEvents(const QVector<MidiEvent> &events)
+void FpnVst3Host::fpnProcessEvents(const QVector<FpnMidiEvent> &events)
 {
     if (events.isEmpty()) {
         return;
     }
 
-    QMutexLocker locker(&m_impl->mutex);
-    m_impl->pendingEvents += events;
+    QMutexLocker locker(&m_fpnImpl->mutex);
+    m_fpnImpl->pendingEvents += events;
 }
 
-bool Vst3Host::render(float *interleavedOutput, int frames, int channels, double sampleRate)
+bool FpnVst3Host::fpnRender(float *interleavedOutput, int frames, int channels, double sampleRate)
 {
     if (!interleavedOutput || frames <= 0 || channels <= 0) {
         return false;
     }
     std::fill(interleavedOutput, interleavedOutput + frames * channels, 0.0f);
 
-    QMutexLocker locker(&m_impl->mutex);
-    if (!m_impl->component || !m_impl->processor || !m_impl->configure(sampleRate, frames)) {
+    QMutexLocker locker(&m_fpnImpl->mutex);
+    if (!m_fpnImpl->component || !m_fpnImpl->processor || !m_fpnImpl->configure(sampleRate, frames)) {
         return false;
     }
 
-    m_impl->eventList.clear();
-    for (const MidiEvent &midiEvent : std::as_const(m_impl->pendingEvents)) {
-        const int status = midiEvent.status & 0xF0;
-        if (status == 0x90 || status == 0x80) {
-            auto event = makeNoteEvent(midiEvent);
-            m_impl->eventList.addEvent(event);
+    m_fpnImpl->eventList.clear();
+    for (const FpnMidiEvent &fpnMidiEvent : std::as_const(m_fpnImpl->pendingEvents)) {
+        const int fpnStatus = fpnMidiEvent.fpnStatus & 0xF0;
+        if (fpnStatus == 0x90 || fpnStatus == 0x80) {
+            auto event = makeNoteEvent(fpnMidiEvent);
+            m_fpnImpl->eventList.addEvent(event);
         }
     }
-    m_impl->pendingEvents.clear();
+    m_fpnImpl->pendingEvents.clear();
 
-    m_impl->processData.numSamples = frames;
-    if (m_impl->processor->process(m_impl->processData) != Steinberg::kResultOk) {
-        m_impl->inputParameterChanges.clearQueue();
-        m_impl->eventList.clear();
+    m_fpnImpl->processData.numSamples = frames;
+    if (m_fpnImpl->processor->process(m_fpnImpl->processData) != Steinberg::kResultOk) {
+        m_fpnImpl->inputParameterChanges.clearQueue();
+        m_fpnImpl->eventList.clear();
         return false;
     }
 
-    if (m_impl->processData.numOutputs <= 0 || !m_impl->processData.outputs) {
+    if (m_fpnImpl->processData.numOutputs <= 0 || !m_fpnImpl->processData.outputs) {
         return true;
     }
 
-    auto &outputBus = m_impl->processData.outputs[0];
+    auto &outputBus = m_fpnImpl->processData.outputs[0];
     for (int frame = 0; frame < frames; ++frame) {
         for (int channel = 0; channel < channels; ++channel) {
             const int sourceChannel = std::min<Steinberg::int32>(channel, outputBus.numChannels - 1);
@@ -371,27 +371,27 @@ bool Vst3Host::render(float *interleavedOutput, int frames, int channels, double
         }
     }
 
-    m_impl->inputParameterChanges.clearQueue();
-    m_impl->eventList.clear();
+    m_fpnImpl->inputParameterChanges.clearQueue();
+    m_fpnImpl->eventList.clear();
     return true;
 }
 
-void Vst3Host::setInstrumentLoaded(bool loaded)
+void FpnVst3Host::fpnSetInstrumentLoaded(bool loaded)
 {
-    if (m_instrumentLoaded == loaded) {
+    if (m_fpnInstrumentLoaded == loaded) {
         return;
     }
 
-    m_instrumentLoaded = loaded;
-    emit instrumentLoadedChanged();
+    m_fpnInstrumentLoaded = loaded;
+    emit fpnInstrumentLoadedChanged();
 }
 
-void Vst3Host::setStatusText(const QString &text)
+void FpnVst3Host::fpnSetStatusText(const QString &text)
 {
-    if (m_statusText == text) {
+    if (m_fpnStatusText == text) {
         return;
     }
 
-    m_statusText = text;
-    emit statusTextChanged();
+    m_fpnStatusText = text;
+    emit fpnStatusTextChanged();
 }

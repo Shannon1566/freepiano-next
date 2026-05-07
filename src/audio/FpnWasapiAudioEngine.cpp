@@ -1,7 +1,7 @@
-#include "audio/WasapiAudioEngine.h"
+#include "audio/FpnWasapiAudioEngine.h"
 
-#include "vst2/Vst2Host.h"
-#include "vst3/Vst3Host.h"
+#include "vst2/FpnVst2Host.h"
+#include "vst3/FpnVst3Host.h"
 
 #ifdef Q_OS_WIN
 #ifndef NOMINMAX
@@ -21,76 +21,76 @@ namespace {
 constexpr int processFrames = 64;
 }
 
-WasapiAudioEngine::WasapiAudioEngine(QObject *parent)
+FpnWasapiAudioEngine::FpnWasapiAudioEngine(QObject *parent)
     : QObject(parent)
-    , m_statusText(QStringLiteral("Audio engine idle"))
+    , m_fpnStatusText(QStringLiteral("Audio engine idle"))
 {
 }
 
-WasapiAudioEngine::~WasapiAudioEngine()
+FpnWasapiAudioEngine::~FpnWasapiAudioEngine()
 {
-    stop();
+    fpnStop();
 }
 
-bool WasapiAudioEngine::start()
+bool FpnWasapiAudioEngine::fpnStart()
 {
 #ifndef Q_OS_WIN
-    setStatusText(QStringLiteral("Audio output requires Windows"));
+    fpnSetStatusText(QStringLiteral("Audio output requires Windows"));
     return false;
 #else
-    if (m_audioThread.joinable()) {
+    if (m_fpnAudioThread.joinable()) {
         return true;
     }
 
-    m_stopRequested = false;
-    m_audioThread = std::thread(&WasapiAudioEngine::audioLoop, this);
-    setRunning(true);
-    setStatusText(QStringLiteral("WASAPI output rendering VST3"));
+    m_fpnStopRequested = false;
+    m_fpnAudioThread = std::thread(&FpnWasapiAudioEngine::fpnAudioLoop, this);
+    fpnSetRunning(true);
+    fpnSetStatusText(QStringLiteral("WASAPI output rendering VST3"));
     return true;
 #endif
 }
 
-void WasapiAudioEngine::stop()
+void FpnWasapiAudioEngine::fpnStop()
 {
-    m_stopRequested = true;
-    if (m_audioThread.joinable()) {
-        m_audioThread.join();
+    m_fpnStopRequested = true;
+    if (m_fpnAudioThread.joinable()) {
+        m_fpnAudioThread.join();
     }
-    setRunning(false);
-    setStatusText(QStringLiteral("Audio engine stopped"));
+    fpnSetRunning(false);
+    fpnSetStatusText(QStringLiteral("Audio engine stopped"));
 }
 
-bool WasapiAudioEngine::isRunning() const
+bool FpnWasapiAudioEngine::fpnIsRunning() const
 {
-    return m_running;
+    return m_fpnRunning;
 }
 
-QString WasapiAudioEngine::statusText() const
+QString FpnWasapiAudioEngine::fpnStatusText() const
 {
-    return m_statusText;
+    return m_fpnStatusText;
 }
 
-void WasapiAudioEngine::setVst3Host(Vst3Host *host)
+void FpnWasapiAudioEngine::fpnSetVst3Host(FpnVst3Host *host)
 {
-    m_vst3Host = host;
+    m_fpnVst3Host = host;
 }
 
-void WasapiAudioEngine::setVst2Host(Vst2Host *host)
+void FpnWasapiAudioEngine::fpnSetVst2Host(FpnVst2Host *host)
 {
-    m_vst2Host = host;
+    m_fpnVst2Host = host;
 }
 
-void WasapiAudioEngine::setUseVst2Host(bool useVst2Host)
+void FpnWasapiAudioEngine::fpnSetUseVst2Host(bool useVst2Host)
 {
-    m_useVst2Host = useVst2Host;
+    m_fpnUseVst2Host = useVst2Host;
 }
 
-void WasapiAudioEngine::submitEvents(const QVector<MidiEvent> &events)
+void FpnWasapiAudioEngine::fpnSubmitEvents(const QVector<FpnMidiEvent> &events)
 {
     Q_UNUSED(events);
 }
 
-void WasapiAudioEngine::audioLoop()
+void FpnWasapiAudioEngine::fpnAudioLoop()
 {
 #ifdef Q_OS_WIN
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
@@ -104,8 +104,8 @@ void WasapiAudioEngine::audioLoop()
     DWORD taskIndex = 0;
 
     const auto fail = [this](const QString &message) {
-        setStatusText(message);
-        setRunning(false);
+        fpnSetStatusText(message);
+        fpnSetRunning(false);
     };
 
     HRESULT hr = CoCreateInstance(__uuidof(MMDeviceEnumerator),
@@ -127,7 +127,7 @@ void WasapiAudioEngine::audioLoop()
         fail(QStringLiteral("Default WASAPI mix format is not 32-bit float"));
         goto cleanup;
     }
-    m_sampleRate = static_cast<double>(mixFormat->nSamplesPerSec);
+    m_fpnSampleRate = static_cast<double>(mixFormat->nSamplesPerSec);
 
     if (FAILED(client->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, 100000, 0, mixFormat, nullptr))
         || FAILED(client->GetService(__uuidof(IAudioRenderClient), reinterpret_cast<void **>(&renderClient)))) {
@@ -143,7 +143,7 @@ void WasapiAudioEngine::audioLoop()
         goto cleanup;
     }
 
-    while (!m_stopRequested) {
+    while (!m_fpnStopRequested) {
         UINT32 bufferFrameCount = 0;
         UINT32 paddingFrames = 0;
         if (FAILED(client->GetBufferSize(&bufferFrameCount))
@@ -167,10 +167,10 @@ void WasapiAudioEngine::audioLoop()
 
         auto *out = reinterpret_cast<float *>(data);
         const int channels = mixFormat->nChannels;
-        if (m_useVst2Host && m_vst2Host) {
-            m_vst2Host->render(out, static_cast<int>(framesToWrite), channels, m_sampleRate);
-        } else if (m_vst3Host) {
-            m_vst3Host->render(out, static_cast<int>(framesToWrite), channels, m_sampleRate);
+        if (m_fpnUseVst2Host && m_fpnVst2Host) {
+            m_fpnVst2Host->fpnRender(out, static_cast<int>(framesToWrite), channels, m_fpnSampleRate);
+        } else if (m_fpnVst3Host) {
+            m_fpnVst3Host->fpnRender(out, static_cast<int>(framesToWrite), channels, m_fpnSampleRate);
         } else {
             std::fill(out, out + framesToWrite * channels, 0.0f);
         }
@@ -204,22 +204,22 @@ cleanup:
 #endif
 }
 
-void WasapiAudioEngine::setRunning(bool running)
+void FpnWasapiAudioEngine::fpnSetRunning(bool running)
 {
-    if (m_running == running) {
+    if (m_fpnRunning == running) {
         return;
     }
 
-    m_running = running;
-    emit runningChanged();
+    m_fpnRunning = running;
+    emit fpnRunningChanged();
 }
 
-void WasapiAudioEngine::setStatusText(const QString &text)
+void FpnWasapiAudioEngine::fpnSetStatusText(const QString &text)
 {
-    if (m_statusText == text) {
+    if (m_fpnStatusText == text) {
         return;
     }
 
-    m_statusText = text;
-    emit statusTextChanged();
+    m_fpnStatusText = text;
+    emit fpnStatusTextChanged();
 }

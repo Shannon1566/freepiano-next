@@ -24,24 +24,24 @@ qt_standard_project_setup(REQUIRES 6.5)
 
 qt_add_executable(freepiano-next
     src/main.cpp
-    src/audio/WasapiAudioEngine.cpp
-    src/audio/WasapiAudioEngine.h
-    src/core/PianoController.cpp
-    src/core/PianoController.h
-    src/input/IMidiInputProvider.h
-    src/input/KeyboardInputMapper.cpp
-    src/input/KeyboardInputMapper.h
-    src/input/NullMidiInputProvider.h
-    src/midi/MidiEvent.h
-    src/midi/MidiEventRouter.cpp
-    src/midi/MidiEventRouter.h
-    src/vst2/Vst2Host.cpp
-    src/vst2/Vst2Host.h
+    src/audio/FpnWasapiAudioEngine.cpp
+    src/audio/FpnWasapiAudioEngine.h
+    src/core/FpnPianoController.cpp
+    src/core/FpnPianoController.h
+    src/input/IFpnMidiInputProvider.h
+    src/input/FpnKeyboardInputMapper.cpp
+    src/input/FpnKeyboardInputMapper.h
+    src/input/FpnNullMidiInputProvider.h
+    src/midi/FpnMidiEvent.h
+    src/midi/FpnMidiEventRouter.cpp
+    src/midi/FpnMidiEventRouter.h
+    src/vst2/FpnVst2Host.cpp
+    src/vst2/FpnVst2Host.h
     src/vst2/aeffect.h
     src/vst2/aeffectx.h
     src/vst2/vstfxstore.h
-    src/vst3/Vst3Host.cpp
-    src/vst3/Vst3Host.h
+    src/vst3/FpnVst3Host.cpp
+    src/vst3/FpnVst3Host.h
     ${VST3_SDK_ROOT}/public.sdk/source/vst/hosting/plugprovider.cpp
     ${VST3_SDK_ROOT}/public.sdk/source/vst/hosting/connectionproxy.cpp
     ${VST3_SDK_ROOT}/public.sdk/source/vst/hosting/module_win32.cpp
@@ -101,7 +101,7 @@ qt_add_qml_module(freepiano-next
     VERSION 1.0
     QML_FILES
         qml/Main.qml
-        qml/PianoKey.qml
+        qml/FpnPianoKey.qml
 )
 
 if(WIN32 AND FREEPIANO_DEPLOY_QT_RUNTIME)

@@ -3,7 +3,7 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 
 ApplicationWindow {
-    id: window
+    id: fpnWindow
 
     width: 980
     height: 420
@@ -11,85 +11,85 @@ ApplicationWindow {
     title: qsTr("freepiano-next")
     color: "#f1f5f9"
 
-    readonly property var whiteNotes: [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83]
-    readonly property var blackNotes: [
-        { "note": 61, "slot": 0 },
-        { "note": 63, "slot": 1 },
-        { "note": 66, "slot": 3 },
-        { "note": 68, "slot": 4 },
-        { "note": 70, "slot": 5 },
-        { "note": 73, "slot": 7 },
-        { "note": 75, "slot": 8 },
-        { "note": 78, "slot": 10 },
-        { "note": 80, "slot": 11 },
-        { "note": 82, "slot": 12 }
+    readonly property var fpnWhiteNotes: [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83]
+    readonly property var fpnBlackNotes: [
+        { "fpnNote": 61, "fpnSlot": 0 },
+        { "fpnNote": 63, "fpnSlot": 1 },
+        { "fpnNote": 66, "fpnSlot": 3 },
+        { "fpnNote": 68, "fpnSlot": 4 },
+        { "fpnNote": 70, "fpnSlot": 5 },
+        { "fpnNote": 73, "fpnSlot": 7 },
+        { "fpnNote": 75, "fpnSlot": 8 },
+        { "fpnNote": 78, "fpnSlot": 10 },
+        { "fpnNote": 80, "fpnSlot": 11 },
+        { "fpnNote": 82, "fpnSlot": 12 }
     ]
-    property var activeKeyboardNotes: ({})
+    property var fpnActiveKeyboardNotes: ({})
 
     FocusScope {
-        id: focusScope
+        id: fpnFocusScope
 
         anchors.fill: parent
         focus: true
 
-        function setKeyboardNoteActive(note, active) {
-            if (activeKeyboardNotes[note] === active) {
+        function fpnSetKeyboardNoteActive(fpnNote, fpnActive) {
+            if (fpnActiveKeyboardNotes[fpnNote] === fpnActive) {
                 return
             }
 
-            const notes = ({})
-            for (const key in activeKeyboardNotes) {
-                notes[key] = activeKeyboardNotes[key]
+            const fpnNotes = ({})
+            for (const fpnKey in fpnActiveKeyboardNotes) {
+                fpnNotes[fpnKey] = fpnActiveKeyboardNotes[fpnKey]
             }
 
-            if (active) {
-                notes[note] = true
+            if (fpnActive) {
+                fpnNotes[fpnNote] = true
             } else {
-                delete notes[note]
+                delete fpnNotes[fpnNote]
             }
-            activeKeyboardNotes = notes
+            fpnActiveKeyboardNotes = fpnNotes
         }
 
-        function clearKeyboardNotes() {
-            activeKeyboardNotes = ({})
+        function fpnClearKeyboardNotes() {
+            fpnActiveKeyboardNotes = ({})
         }
 
-        Keys.onPressed: event => {
-            if (event.isAutoRepeat) {
-                event.accepted = true
+        Keys.onPressed: fpnEvent => {
+            if (fpnEvent.isAutoRepeat) {
+                fpnEvent.accepted = true
                 return
             }
 
-            if (event.key === Qt.Key_Space) {
-                pianoController.setSustain(true)
-                event.accepted = true
+            if (fpnEvent.key === Qt.Key_Space) {
+                fpnPianoController.fpnSetSustain(true)
+                fpnEvent.accepted = true
                 return
             }
 
-            const note = pianoController.keyboardMapper.noteForKey(event.key)
-            if (note >= 0 && activeKeyboardNotes[note] !== true) {
-                setKeyboardNoteActive(note, true)
-                pianoController.noteOn(note, 100)
-                event.accepted = true
+            const fpnNote = fpnPianoController.fpnKeyboardMapper.fpnNoteForKey(fpnEvent.key)
+            if (fpnNote >= 0 && fpnActiveKeyboardNotes[fpnNote] !== true) {
+                fpnSetKeyboardNoteActive(fpnNote, true)
+                fpnPianoController.fpnNoteOn(fpnNote, 100)
+                fpnEvent.accepted = true
             }
         }
-        Keys.onReleased: event => {
-            if (event.isAutoRepeat) {
-                event.accepted = true
+        Keys.onReleased: fpnEvent => {
+            if (fpnEvent.isAutoRepeat) {
+                fpnEvent.accepted = true
                 return
             }
 
-            if (event.key === Qt.Key_Space) {
-                pianoController.setSustain(false)
-                event.accepted = true
+            if (fpnEvent.key === Qt.Key_Space) {
+                fpnPianoController.fpnSetSustain(false)
+                fpnEvent.accepted = true
                 return
             }
 
-            const note = pianoController.keyboardMapper.noteForKey(event.key)
-            if (note >= 0) {
-                setKeyboardNoteActive(note, false)
-                pianoController.noteOff(note)
-                event.accepted = true
+            const fpnNote = fpnPianoController.fpnKeyboardMapper.fpnNoteForKey(fpnEvent.key)
+            if (fpnNote >= 0) {
+                fpnSetKeyboardNoteActive(fpnNote, false)
+                fpnPianoController.fpnNoteOff(fpnNote)
+                fpnEvent.accepted = true
             }
         }
 
@@ -104,31 +104,31 @@ ApplicationWindow {
 
                 Label {
                     Layout.fillWidth: true
-                    text: pianoController.statusText
+                    text: fpnPianoController.fpnStatusText
                     elide: Text.ElideRight
                     color: "#0f172a"
                 }
 
                 ComboBox {
-                    id: instrumentBox
+                    id: fpnInstrumentBox
 
                     Layout.preferredWidth: 240
-                    model: pianoController.availableInstruments
-                    currentIndex: pianoController.currentInstrumentIndex
+                    model: fpnPianoController.fpnAvailableInstruments
+                    currentIndex: fpnPianoController.fpnCurrentInstrumentIndex
                     textRole: ""
                     enabled: count > 0
                     onActivated: index => {
-                        pianoController.loadInstrument(index)
-                        focusScope.forceActiveFocus()
+                        fpnPianoController.fpnLoadInstrument(index)
+                        fpnFocusScope.forceActiveFocus()
                     }
 
                     Connections {
-                        target: pianoController
-                        function onCurrentInstrumentChanged() {
-                            instrumentBox.currentIndex = pianoController.currentInstrumentIndex
+                        target: fpnPianoController
+                        function onFpnCurrentInstrumentChanged() {
+                            fpnInstrumentBox.currentIndex = fpnPianoController.fpnCurrentInstrumentIndex
                         }
-                        function onAvailableInstrumentsChanged() {
-                            instrumentBox.currentIndex = pianoController.currentInstrumentIndex
+                        function onFpnAvailableInstrumentsChanged() {
+                            fpnInstrumentBox.currentIndex = fpnPianoController.fpnCurrentInstrumentIndex
                         }
                     }
                 }
@@ -136,71 +136,71 @@ ApplicationWindow {
                 Button {
                     text: qsTr("Refresh")
                     onClicked: {
-                        pianoController.refreshInstruments()
-                        focusScope.forceActiveFocus()
+                        fpnPianoController.fpnRefreshInstruments()
+                        fpnFocusScope.forceActiveFocus()
                     }
                 }
 
                 Button {
                     text: qsTr("Load")
-                    onClicked: pianoController.loadDefaultInstrument()
+                    onClicked: fpnPianoController.fpnLoadDefaultInstrument()
                 }
 
                 Button {
                     text: qsTr("Panic")
                     onClicked: {
-                        pianoController.panic()
-                        focusScope.clearKeyboardNotes()
+                        fpnPianoController.fpnPanic()
+                        fpnFocusScope.fpnClearKeyboardNotes()
                     }
                 }
             }
 
             Item {
-                id: piano
+                id: fpnPiano
 
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.minimumHeight: 240
 
-                readonly property real whiteKeyWidth: width / whiteNotes.length
+                readonly property real fpnWhiteKeyWidth: width / fpnWhiteNotes.length
 
                 Row {
                     anchors.fill: parent
                     spacing: 0
 
                     Repeater {
-                        model: whiteNotes
+                        model: fpnWhiteNotes
 
-                        PianoKey {
+                        FpnPianoKey {
                             required property int modelData
 
-                            width: piano.whiteKeyWidth
-                            height: piano.height
-                            note: modelData
-                            blackKey: false
-                            keyboardPressed: activeKeyboardNotes[modelData] === true
-                            onKeyPressed: note => pianoController.noteOn(note, 100)
-                            onKeyReleased: note => pianoController.noteOff(note)
+                            width: fpnPiano.fpnWhiteKeyWidth
+                            height: fpnPiano.height
+                            fpnNote: modelData
+                            fpnBlackKey: false
+                            fpnKeyboardPressed: fpnActiveKeyboardNotes[modelData] === true
+                            onFpnKeyPressed: fpnNote => fpnPianoController.fpnNoteOn(fpnNote, 100)
+                            onFpnKeyReleased: fpnNote => fpnPianoController.fpnNoteOff(fpnNote)
                         }
                     }
                 }
 
                 Repeater {
-                    model: blackNotes
+                    model: fpnBlackNotes
 
-                    PianoKey {
+                    FpnPianoKey {
                         required property var modelData
 
-                        x: (modelData.slot + 0.68) * piano.whiteKeyWidth
+                        x: (modelData.fpnSlot + 0.68) * fpnPiano.fpnWhiteKeyWidth
                         y: 0
-                        width: piano.whiteKeyWidth * 0.62
-                        height: piano.height * 0.62
+                        width: fpnPiano.fpnWhiteKeyWidth * 0.62
+                        height: fpnPiano.height * 0.62
                         z: 2
-                        note: modelData.note
-                        blackKey: true
-                        keyboardPressed: activeKeyboardNotes[modelData.note] === true
-                        onKeyPressed: note => pianoController.noteOn(note, 100)
-                        onKeyReleased: note => pianoController.noteOff(note)
+                        fpnNote: modelData.fpnNote
+                        fpnBlackKey: true
+                        fpnKeyboardPressed: fpnActiveKeyboardNotes[modelData.fpnNote] === true
+                        onFpnKeyPressed: fpnNote => fpnPianoController.fpnNoteOn(fpnNote, 100)
+                        onFpnKeyReleased: fpnNote => fpnPianoController.fpnNoteOff(fpnNote)
                     }
                 }
             }
@@ -209,8 +209,8 @@ ApplicationWindow {
         Component.onCompleted: forceActiveFocus()
         onActiveFocusChanged: {
             if (!activeFocus) {
-                pianoController.panic()
-                clearKeyboardNotes()
+                fpnPianoController.fpnPanic()
+                fpnClearKeyboardNotes()
             }
         }
     }

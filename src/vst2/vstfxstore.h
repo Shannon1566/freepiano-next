@@ -7,7 +7,7 @@
 // Created by   : Steinberg Media Technologies
 // Description  : Definition of Program (fxp) and Bank (fxb) structures
 //
-// © 2006, Steinberg Media Technologies, All Rights Reserved
+// (C) 2006, Steinberg Media Technologies, All Rights Reserved
 //-------------------------------------------------------------------------------------------------------
 
 #ifndef __vstfxstore__

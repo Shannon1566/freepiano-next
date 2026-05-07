@@ -3,17 +3,17 @@
 #include <QQmlContext>
 #include <QQuickStyle>
 
-#include "core/PianoController.h"
+#include "core/FpnPianoController.h"
 
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
     QQuickStyle::setStyle(QStringLiteral("Basic"));
 
-    PianoController pianoController;
+    FpnPianoController fpnPianoController;
 
     QQmlApplicationEngine engine;
-    engine.rootContext()->setContextProperty(QStringLiteral("pianoController"), &pianoController);
+    engine.rootContext()->setContextProperty(QStringLiteral("fpnPianoController"), &fpnPianoController);
 
     QObject::connect(
         &engine,
