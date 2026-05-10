@@ -101,7 +101,9 @@ qt_add_qml_module(freepiano-next
     VERSION 1.0
     QML_FILES
         qml/Main.qml
+        qml/FpnComputerKeyboard.qml
         qml/FpnPianoKey.qml
+        qml/FpnPianoKeyboard.qml
 )
 
 if(WIN32 AND FREEPIANO_DEPLOY_QT_RUNTIME)

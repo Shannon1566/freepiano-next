@@ -6,25 +6,13 @@ ApplicationWindow {
     id: fpnWindow
 
     width: 980
-    height: 420
+    height: 620
     visible: true
     title: qsTr("freepiano-next")
     color: "#f1f5f9"
 
-    readonly property var fpnWhiteNotes: [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83]
-    readonly property var fpnBlackNotes: [
-        { "fpnNote": 61, "fpnSlot": 0 },
-        { "fpnNote": 63, "fpnSlot": 1 },
-        { "fpnNote": 66, "fpnSlot": 3 },
-        { "fpnNote": 68, "fpnSlot": 4 },
-        { "fpnNote": 70, "fpnSlot": 5 },
-        { "fpnNote": 73, "fpnSlot": 7 },
-        { "fpnNote": 75, "fpnSlot": 8 },
-        { "fpnNote": 78, "fpnSlot": 10 },
-        { "fpnNote": 80, "fpnSlot": 11 },
-        { "fpnNote": 82, "fpnSlot": 12 }
-    ]
     property var fpnActiveKeyboardNotes: ({})
+    property var fpnActiveQtKeys: ({})
 
     FocusScope {
         id: fpnFocusScope
@@ -50,8 +38,35 @@ ApplicationWindow {
             fpnActiveKeyboardNotes = fpnNotes
         }
 
+        function fpnSetQtKeyActive(fpnKey, fpnActive) {
+            if (fpnActiveQtKeys[fpnKey] === fpnActive) {
+                return
+            }
+
+            const fpnKeys = ({})
+            for (const fpnExistingKey in fpnActiveQtKeys) {
+                fpnKeys[fpnExistingKey] = fpnActiveQtKeys[fpnExistingKey]
+            }
+
+            if (fpnActive) {
+                fpnKeys[fpnKey] = true
+            } else {
+                delete fpnKeys[fpnKey]
+            }
+            fpnActiveQtKeys = fpnKeys
+        }
+
         function fpnClearKeyboardNotes() {
             fpnActiveKeyboardNotes = ({})
+        }
+
+        function fpnClearQtKeys() {
+            fpnActiveQtKeys = ({})
+        }
+
+        function fpnClearPressedState() {
+            fpnClearKeyboardNotes()
+            fpnClearQtKeys()
         }
 
         Keys.onPressed: fpnEvent => {
@@ -59,6 +74,8 @@ ApplicationWindow {
                 fpnEvent.accepted = true
                 return
             }
+
+            fpnSetQtKeyActive(fpnEvent.key, true)
 
             if (fpnEvent.key === Qt.Key_Space) {
                 fpnPianoController.fpnSetSustain(true)
@@ -70,14 +87,16 @@ ApplicationWindow {
             if (fpnNote >= 0 && fpnActiveKeyboardNotes[fpnNote] !== true) {
                 fpnSetKeyboardNoteActive(fpnNote, true)
                 fpnPianoController.fpnNoteOn(fpnNote, 100)
-                fpnEvent.accepted = true
             }
+            fpnEvent.accepted = true
         }
         Keys.onReleased: fpnEvent => {
             if (fpnEvent.isAutoRepeat) {
                 fpnEvent.accepted = true
                 return
             }
+
+            fpnSetQtKeyActive(fpnEvent.key, false)
 
             if (fpnEvent.key === Qt.Key_Space) {
                 fpnPianoController.fpnSetSustain(false)
@@ -89,8 +108,8 @@ ApplicationWindow {
             if (fpnNote >= 0) {
                 fpnSetKeyboardNoteActive(fpnNote, false)
                 fpnPianoController.fpnNoteOff(fpnNote)
-                fpnEvent.accepted = true
             }
+            fpnEvent.accepted = true
         }
 
         ColumnLayout {
@@ -150,59 +169,24 @@ ApplicationWindow {
                     text: qsTr("Panic")
                     onClicked: {
                         fpnPianoController.fpnPanic()
-                        fpnFocusScope.fpnClearKeyboardNotes()
+                        fpnFocusScope.fpnClearPressedState()
                     }
                 }
             }
 
-            Item {
-                id: fpnPiano
-
+            FpnPianoKeyboard {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.minimumHeight: 240
+                Layout.minimumHeight: 210
+                fpnActiveNotes: fpnWindow.fpnActiveKeyboardNotes
+                onFpnKeyPressed: fpnNote => fpnPianoController.fpnNoteOn(fpnNote, 100)
+                onFpnKeyReleased: fpnNote => fpnPianoController.fpnNoteOff(fpnNote)
+            }
 
-                readonly property real fpnWhiteKeyWidth: width / fpnWhiteNotes.length
-
-                Row {
-                    anchors.fill: parent
-                    spacing: 0
-
-                    Repeater {
-                        model: fpnWhiteNotes
-
-                        FpnPianoKey {
-                            required property int modelData
-
-                            width: fpnPiano.fpnWhiteKeyWidth
-                            height: fpnPiano.height
-                            fpnNote: modelData
-                            fpnBlackKey: false
-                            fpnKeyboardPressed: fpnActiveKeyboardNotes[modelData] === true
-                            onFpnKeyPressed: fpnNote => fpnPianoController.fpnNoteOn(fpnNote, 100)
-                            onFpnKeyReleased: fpnNote => fpnPianoController.fpnNoteOff(fpnNote)
-                        }
-                    }
-                }
-
-                Repeater {
-                    model: fpnBlackNotes
-
-                    FpnPianoKey {
-                        required property var modelData
-
-                        x: (modelData.fpnSlot + 0.68) * fpnPiano.fpnWhiteKeyWidth
-                        y: 0
-                        width: fpnPiano.fpnWhiteKeyWidth * 0.62
-                        height: fpnPiano.height * 0.62
-                        z: 2
-                        fpnNote: modelData.fpnNote
-                        fpnBlackKey: true
-                        fpnKeyboardPressed: fpnActiveKeyboardNotes[modelData.fpnNote] === true
-                        onFpnKeyPressed: fpnNote => fpnPianoController.fpnNoteOn(fpnNote, 100)
-                        onFpnKeyReleased: fpnNote => fpnPianoController.fpnNoteOff(fpnNote)
-                    }
-                }
+            FpnComputerKeyboard {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 234
+                fpnActiveQtKeys: fpnWindow.fpnActiveQtKeys
             }
         }
 
@@ -210,7 +194,7 @@ ApplicationWindow {
         onActiveFocusChanged: {
             if (!activeFocus) {
                 fpnPianoController.fpnPanic()
-                fpnClearKeyboardNotes()
+                fpnClearPressedState()
             }
         }
     }
