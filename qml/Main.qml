@@ -5,7 +5,7 @@ import QtQuick.Layouts
 ApplicationWindow {
     id: fpnWindow
 
-    width: 980
+    width: 1280
     height: 620
     visible: true
     title: qsTr("freepiano-next")
@@ -56,6 +56,24 @@ ApplicationWindow {
             fpnActiveQtKeys = fpnKeys
         }
 
+        function fpnKeyTokens(fpnEvent) {
+            const fpnTokens = []
+            if ((fpnEvent.key === Qt.Key_Shift || fpnEvent.key === Qt.Key_Control || fpnEvent.key === Qt.Key_Alt || fpnEvent.key === Qt.Key_AltGr)
+                    && fpnEvent.nativeScanCode > 0) {
+                fpnTokens.push("scan:" + fpnEvent.nativeScanCode)
+            }
+
+            const fpnPrefix = (fpnEvent.modifiers & Qt.KeypadModifier) ? "numpad:" : "main:"
+            fpnTokens.push(fpnPrefix + fpnEvent.key)
+            return fpnTokens
+        }
+
+        function fpnSetQtKeyTokensActive(fpnTokens, fpnActive) {
+            for (const fpnToken of fpnTokens) {
+                fpnSetQtKeyActive(fpnToken, fpnActive)
+            }
+        }
+
         function fpnClearKeyboardNotes() {
             fpnActiveKeyboardNotes = ({})
         }
@@ -75,7 +93,7 @@ ApplicationWindow {
                 return
             }
 
-            fpnSetQtKeyActive(fpnEvent.key, true)
+            fpnSetQtKeyTokensActive(fpnKeyTokens(fpnEvent), true)
 
             if (fpnEvent.key === Qt.Key_Space) {
                 fpnPianoController.fpnSetSustain(true)
@@ -96,7 +114,7 @@ ApplicationWindow {
                 return
             }
 
-            fpnSetQtKeyActive(fpnEvent.key, false)
+            fpnSetQtKeyTokensActive(fpnKeyTokens(fpnEvent), false)
 
             if (fpnEvent.key === Qt.Key_Space) {
                 fpnPianoController.fpnSetSustain(false)
