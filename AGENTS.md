@@ -7,6 +7,7 @@
 ## Agent 权限与安全约束
 
 - 允许修改当前工程目录下的代码与文件；对项目外的文件只读。
+- 不许进行git commit git add等操作，所有git操作仅限读取历史记录，不能修改历史记录。
 
 ## Project Structure & Module Organization
 
