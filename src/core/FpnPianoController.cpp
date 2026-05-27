@@ -18,6 +18,7 @@ FpnPianoController::FpnPianoController(QObject *parent)
     connect(&m_fpnVst2Host, &FpnVst2Host::fpnStatusTextChanged, this, &FpnPianoController::fpnUpdateStatusText);
     connect(&m_fpnVst3Host, &FpnVst3Host::fpnInstrumentLoadedChanged, this, &FpnPianoController::fpnInstrumentLoadedChanged);
     connect(&m_fpnVst3Host, &FpnVst3Host::fpnStatusTextChanged, this, &FpnPianoController::fpnUpdateStatusText);
+    connect(&m_fpnKeyboardMapper, &FpnKeyboardInputMapper::fpnKeyboardLayoutStatusChanged, this, &FpnPianoController::fpnUpdateStatusText);
 
     m_fpnAudioEngine.fpnSetVst3Host(&m_fpnVst3Host);
     m_fpnAudioEngine.fpnSetVst2Host(&m_fpnVst2Host);
@@ -213,8 +214,11 @@ void FpnPianoController::fpnUpdateStatusText()
         && m_fpnInstruments.at(m_fpnCurrentInstrumentIndex).fpnKind == FpnInstrumentDescriptor::FpnKind::FpnVst2
         ? m_fpnVst2Host.fpnStatusText()
         : m_fpnVst3Host.fpnStatusText();
-    const QString text = QStringLiteral("%1 | %2 | %3 | Octave shift: %4")
-                             .arg(m_fpnAudioEngine.fpnStatusText(), instrumentStatus, sourceText)
+    const QString layoutStatus = m_fpnKeyboardMapper.fpnKeyboardLayoutStatus().isEmpty()
+        ? QStringLiteral("Keyboard map: default")
+        : m_fpnKeyboardMapper.fpnKeyboardLayoutStatus();
+    const QString text = QStringLiteral("%1 | %2 | %3 | %4 | Octave shift: %5")
+                             .arg(m_fpnAudioEngine.fpnStatusText(), instrumentStatus, sourceText, layoutStatus)
                              .arg(m_fpnOctaveShift);
     if (m_fpnStatusText == text) {
         return;

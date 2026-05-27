@@ -16,6 +16,8 @@ ApplicationWindow {
 
     property var fpnActiveKeyboardNotes: ({})
     property var fpnActiveQtKeys: ({})
+    property var fpnPressedKeyNotes: ({})
+    property var fpnActiveNoteCounts: ({})
 
     readonly property bool fpnCompact: width < FpnTheme.fpnBreakpointCompact
 
@@ -25,21 +27,26 @@ ApplicationWindow {
         anchors.fill: parent
         focus: true
 
-        function fpnSetKeyboardNoteActive(fpnNote, fpnActive) {
-            if (fpnActiveKeyboardNotes[fpnNote] === fpnActive) {
-                return
-            }
-
+        function fpnSetKeyboardNoteCount(fpnNote, fpnDelta) {
             const fpnNotes = ({})
             for (const fpnKey in fpnActiveKeyboardNotes) {
                 fpnNotes[fpnKey] = fpnActiveKeyboardNotes[fpnKey]
             }
 
-            if (fpnActive) {
+            const fpnCounts = ({})
+            for (const fpnCountKey in fpnActiveNoteCounts) {
+                fpnCounts[fpnCountKey] = fpnActiveNoteCounts[fpnCountKey]
+            }
+
+            const fpnNextCount = Math.max(0, (fpnCounts[fpnNote] === undefined ? 0 : fpnCounts[fpnNote]) + fpnDelta)
+            if (fpnNextCount > 0) {
+                fpnCounts[fpnNote] = fpnNextCount
                 fpnNotes[fpnNote] = true
             } else {
+                delete fpnCounts[fpnNote]
                 delete fpnNotes[fpnNote]
             }
+            fpnActiveNoteCounts = fpnCounts
             fpnActiveKeyboardNotes = fpnNotes
         }
 
@@ -63,8 +70,7 @@ ApplicationWindow {
 
         function fpnKeyTokens(fpnEvent) {
             const fpnTokens = []
-            if ((fpnEvent.key === Qt.Key_Shift || fpnEvent.key === Qt.Key_Control || fpnEvent.key === Qt.Key_Alt || fpnEvent.key === Qt.Key_AltGr)
-                    && fpnEvent.nativeScanCode > 0) {
+            if (fpnEvent.nativeScanCode > 0) {
                 fpnTokens.push("scan:" + fpnEvent.nativeScanCode)
             }
 
@@ -81,6 +87,8 @@ ApplicationWindow {
 
         function fpnClearKeyboardNotes() {
             fpnActiveKeyboardNotes = ({})
+            fpnPressedKeyNotes = ({})
+            fpnActiveNoteCounts = ({})
         }
 
         function fpnClearQtKeys() {
@@ -99,6 +107,10 @@ ApplicationWindow {
             }
 
             fpnSetQtKeyTokensActive(fpnKeyTokens(fpnEvent), true)
+            const fpnCanonicalKeyToken = fpnPianoController.fpnKeyboardMapper.fpnKeyTokenForTokens(fpnKeyTokens(fpnEvent))
+            if (fpnCanonicalKeyToken.length > 0) {
+                fpnSetQtKeyActive(fpnCanonicalKeyToken, true)
+            }
 
             if (fpnEvent.key === Qt.Key_Space) {
                 fpnPianoController.fpnSetSustain(true)
@@ -106,9 +118,15 @@ ApplicationWindow {
                 return
             }
 
-            const fpnNote = fpnPianoController.fpnKeyboardMapper.fpnNoteForKey(fpnEvent.key)
-            if (fpnNote >= 0 && fpnActiveKeyboardNotes[fpnNote] !== true) {
-                fpnSetKeyboardNoteActive(fpnNote, true)
+            const fpnNote = fpnPianoController.fpnKeyboardMapper.fpnNoteForTokens(fpnKeyTokens(fpnEvent))
+            if (fpnNote >= 0 && fpnCanonicalKeyToken.length > 0 && fpnPressedKeyNotes[fpnCanonicalKeyToken] === undefined) {
+                const fpnPressed = ({})
+                for (const fpnPressedKey in fpnPressedKeyNotes) {
+                    fpnPressed[fpnPressedKey] = fpnPressedKeyNotes[fpnPressedKey]
+                }
+                fpnPressed[fpnCanonicalKeyToken] = fpnNote
+                fpnPressedKeyNotes = fpnPressed
+                fpnSetKeyboardNoteCount(fpnNote, 1)
                 fpnPianoController.fpnNoteOn(fpnNote, 100)
             }
             fpnEvent.accepted = true
@@ -120,6 +138,10 @@ ApplicationWindow {
             }
 
             fpnSetQtKeyTokensActive(fpnKeyTokens(fpnEvent), false)
+            const fpnCanonicalKeyToken = fpnPianoController.fpnKeyboardMapper.fpnKeyTokenForTokens(fpnKeyTokens(fpnEvent))
+            if (fpnCanonicalKeyToken.length > 0) {
+                fpnSetQtKeyActive(fpnCanonicalKeyToken, false)
+            }
 
             if (fpnEvent.key === Qt.Key_Space) {
                 fpnPianoController.fpnSetSustain(false)
@@ -127,9 +149,15 @@ ApplicationWindow {
                 return
             }
 
-            const fpnNote = fpnPianoController.fpnKeyboardMapper.fpnNoteForKey(fpnEvent.key)
-            if (fpnNote >= 0) {
-                fpnSetKeyboardNoteActive(fpnNote, false)
+            const fpnNote = fpnPressedKeyNotes[fpnCanonicalKeyToken]
+            if (fpnNote !== undefined) {
+                const fpnPressed = ({})
+                for (const fpnPressedKey in fpnPressedKeyNotes) {
+                    fpnPressed[fpnPressedKey] = fpnPressedKeyNotes[fpnPressedKey]
+                }
+                delete fpnPressed[fpnCanonicalKeyToken]
+                fpnPressedKeyNotes = fpnPressed
+                fpnSetKeyboardNoteCount(fpnNote, -1)
                 fpnPianoController.fpnNoteOff(fpnNote)
             }
             fpnEvent.accepted = true
@@ -158,6 +186,7 @@ ApplicationWindow {
                 Layout.fillHeight: true
                 fpnActiveKeyboardNotes: fpnWindow.fpnActiveKeyboardNotes
                 fpnActiveQtKeys: fpnWindow.fpnActiveQtKeys
+                fpnKeyboardMapper: fpnPianoController.fpnKeyboardMapper
                 onFpnPianoKeyPressed: fpnNote => fpnPianoController.fpnNoteOn(fpnNote, 100)
                 onFpnPianoKeyReleased: fpnNote => fpnPianoController.fpnNoteOff(fpnNote)
             }

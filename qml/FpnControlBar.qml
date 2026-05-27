@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls.Basic
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import FreePiano
 
@@ -15,6 +16,30 @@ Rectangle {
     color: FpnTheme.fpnPanelColor
     border.color: FpnTheme.fpnBorderColor
     implicitHeight: FpnTheme.fpnHeaderHeight
+
+    FileDialog {
+        id: fpnLoadMapDialog
+
+        title: qsTr("Load Keyboard Map")
+        nameFilters: [qsTr("FreePiano maps (*.map *.cfg)"), qsTr("All files (*)")]
+        onAccepted: {
+            fpnRoot.fpnController.fpnKeyboardMapper.fpnLoadKeyboardLayout(selectedFile)
+            fpnRoot.fpnActionFinished()
+        }
+    }
+
+    FileDialog {
+        id: fpnSaveMapDialog
+
+        title: qsTr("Save Keyboard Map")
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "map"
+        nameFilters: [qsTr("FreePiano map (*.map)"), qsTr("All files (*)")]
+        onAccepted: {
+            fpnRoot.fpnController.fpnKeyboardMapper.fpnSaveKeyboardLayout(selectedFile)
+            fpnRoot.fpnActionFinished()
+        }
+    }
 
     RowLayout {
         anchors.fill: parent
@@ -89,6 +114,39 @@ Rectangle {
             text: qsTr("Panic")
             font.pixelSize: FpnTheme.fpnFontPixelSize(13)
             onClicked: fpnRoot.fpnPanicRequested()
+        }
+
+        Button {
+            Layout.preferredHeight: FpnTheme.fpnToolbarControlHeight
+            text: qsTr("Load Map")
+            font.pixelSize: FpnTheme.fpnFontPixelSize(13)
+            visible: !fpnRoot.fpnCompact
+            onClicked: {
+                fpnLoadMapDialog.open()
+                fpnRoot.fpnActionFinished()
+            }
+        }
+
+        Button {
+            Layout.preferredHeight: FpnTheme.fpnToolbarControlHeight
+            text: qsTr("Save Map")
+            font.pixelSize: FpnTheme.fpnFontPixelSize(13)
+            visible: !fpnRoot.fpnCompact
+            onClicked: {
+                fpnSaveMapDialog.open()
+                fpnRoot.fpnActionFinished()
+            }
+        }
+
+        Button {
+            Layout.preferredHeight: FpnTheme.fpnToolbarControlHeight
+            text: qsTr("Reset Map")
+            font.pixelSize: FpnTheme.fpnFontPixelSize(13)
+            visible: !fpnRoot.fpnCompact
+            onClicked: {
+                fpnRoot.fpnController.fpnKeyboardMapper.fpnResetDefaultKeyboardLayout()
+                fpnRoot.fpnActionFinished()
+            }
         }
     }
 }

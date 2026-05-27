@@ -1,18 +1,58 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import FreePiano
 
 Item {
     id: fpnRoot
 
     property var fpnActiveQtKeys: ({})
+    required property var fpnKeyboardMapper
+    property string fpnSelectedToken: ""
+    property int fpnSelectedNote: 60
+    property real fpnEditorX: 0
+    property real fpnEditorY: 0
 
     readonly property real fpnKeySpacing: FpnTheme.fpnSpaceXs
     readonly property real fpnTotalColumns: 24
     readonly property int fpnTotalRows: 6
     readonly property real fpnUnitWidth: Math.max(26, (width - fpnKeySpacing * (fpnTotalColumns - 1)) / fpnTotalColumns)
     readonly property real fpnKeyHeight: Math.max(28, Math.min(40, (height - fpnKeySpacing * (fpnTotalRows - 1)) / fpnTotalRows))
+    readonly property real fpnEditorWidth: Math.min(width - FpnTheme.fpnSpaceL, 360)
+    readonly property real fpnEditorHeight: FpnTheme.fpnToolbarControlHeight + FpnTheme.fpnSpaceM * 2
     implicitWidth: 760
     implicitHeight: fpnKeyHeight * fpnTotalRows + fpnKeySpacing * (fpnTotalRows - 1)
+
+    readonly property var fpnLegacyTokens: ({
+        "main:16777216": "dik:1", "main:16777264": "dik:59", "main:16777265": "dik:60",
+        "main:16777266": "dik:61", "main:16777267": "dik:62", "main:16777268": "dik:63",
+        "main:16777269": "dik:64", "main:16777270": "dik:65", "main:16777271": "dik:66",
+        "main:16777272": "dik:67", "main:16777273": "dik:68", "main:16777274": "dik:87",
+        "main:16777275": "dik:88", "main:96": "dik:41", "main:49": "dik:2",
+        "main:50": "dik:3", "main:51": "dik:4", "main:52": "dik:5", "main:53": "dik:6",
+        "main:54": "dik:7", "main:55": "dik:8", "main:56": "dik:9", "main:57": "dik:10",
+        "main:48": "dik:11", "main:45": "dik:12", "main:61": "dik:13",
+        "main:16777219": "dik:14", "main:16777217": "dik:15", "main:81": "dik:16",
+        "main:87": "dik:17", "main:69": "dik:18", "main:82": "dik:19", "main:84": "dik:20",
+        "main:89": "dik:21", "main:85": "dik:22", "main:73": "dik:23", "main:79": "dik:24",
+        "main:80": "dik:25", "main:91": "dik:26", "main:93": "dik:27", "main:92": "dik:43",
+        "main:16777252": "dik:58", "main:65": "dik:30", "main:83": "dik:31",
+        "main:68": "dik:32", "main:70": "dik:33", "main:71": "dik:34", "main:72": "dik:35",
+        "main:74": "dik:36", "main:75": "dik:37", "main:76": "dik:38", "main:59": "dik:39",
+        "main:39": "dik:40", "main:16777220": "dik:28", "main:90": "dik:44",
+        "main:88": "dik:45", "main:67": "dik:46", "main:86": "dik:47", "main:66": "dik:48",
+        "main:78": "dik:49", "main:77": "dik:50", "main:44": "dik:51", "main:46": "dik:52",
+        "main:47": "dik:53", "main:16777249": "dik:29", "main:16777250": "dik:56",
+        "main:32": "dik:57", "main:16777222": "dik:210", "main:16777232": "dik:199",
+        "main:16777238": "dik:201", "main:16777223": "dik:211", "main:16777233": "dik:207",
+        "main:16777239": "dik:209", "main:16777235": "dik:200", "main:16777234": "dik:203",
+        "main:16777237": "dik:208", "main:16777236": "dik:205", "numpad:16777253": "dik:69",
+        "numpad:47": "dik:181", "numpad:42": "dik:55", "numpad:45": "dik:74",
+        "numpad:55": "dik:71", "numpad:56": "dik:72", "numpad:57": "dik:73",
+        "numpad:43": "dik:78", "numpad:52": "dik:75", "numpad:53": "dik:76",
+        "numpad:54": "dik:77", "numpad:49": "dik:79", "numpad:50": "dik:80",
+        "numpad:51": "dik:81", "numpad:16777221": "dik:156", "numpad:48": "dik:82",
+        "numpad:46": "dik:83"
+    })
 
     readonly property var fpnKeys: [
         { "fpnLabel": "Esc", "fpnKey": Qt.Key_Escape, "fpnColumn": 0, "fpnRow": 0, "fpnColumnSpan": 1.2 },
@@ -128,6 +168,16 @@ Item {
         return (fpnNumpad ? "numpad:" : "main:") + fpnKey
     }
 
+    function fpnKeyToken(fpnModelData) {
+        if (fpnModelData.fpnToken !== undefined) {
+            return fpnModelData.fpnToken
+        }
+        if (fpnModelData.fpnTokens !== undefined && fpnModelData.fpnTokens.length > 0) {
+            return fpnModelData.fpnTokens[0]
+        }
+        return fpnLegacyTokens[fpnToken(fpnModelData.fpnKey, fpnModelData.fpnNumpad === true)] || ""
+    }
+
     function fpnPressedAny(fpnKey, fpnNumpad, fpnTokenOverride, fpnTokenOverrides) {
         if (fpnTokenOverrides !== undefined) {
             for (const fpnKeyToken of fpnTokenOverrides) {
@@ -142,15 +192,40 @@ Item {
         return fpnRoot.fpnActiveQtKeys[fpnKeyToken] === true
     }
 
+    function fpnOpenEditor(fpnToken, fpnKeyX, fpnKeyY, fpnKeyWidth, fpnKeyHeightValue) {
+        if (fpnToken.length <= 0) {
+            return
+        }
+
+        const fpnCurrent = fpnRoot.fpnKeyboardMapper.fpnKeyboardLayout.find(item => item.fpnToken === fpnToken)
+        fpnRoot.fpnSelectedToken = fpnToken
+        fpnRoot.fpnSelectedNote = fpnCurrent === undefined || fpnCurrent.fpnNote < 0 ? 60 : fpnCurrent.fpnNote
+
+        const fpnMaxX = Math.max(0, fpnRoot.width - fpnRoot.fpnEditorWidth)
+        const fpnMaxY = Math.max(0, fpnRoot.height - fpnRoot.fpnEditorHeight)
+        const fpnPreferredY = fpnKeyY + fpnKeyHeightValue + FpnTheme.fpnSpaceS
+        const fpnFlippedY = fpnKeyY - fpnRoot.fpnEditorHeight - FpnTheme.fpnSpaceS
+
+        fpnRoot.fpnEditorX = Math.max(0, Math.min(fpnKeyX + fpnKeyWidth / 2 - fpnRoot.fpnEditorWidth / 2, fpnMaxX))
+        fpnRoot.fpnEditorY = Math.max(0, Math.min(fpnPreferredY + fpnRoot.fpnEditorHeight <= fpnRoot.height ? fpnPreferredY : fpnFlippedY, fpnMaxY))
+    }
+
     Repeater {
         model: fpnRoot.fpnKeys
 
         Rectangle {
+            id: fpnKeyRect
+
             required property var modelData
 
             readonly property real fpnColumnSpan: modelData.fpnColumnSpan === undefined ? 1 : modelData.fpnColumnSpan
             readonly property real fpnRowSpan: modelData.fpnRowSpan === undefined ? 1 : modelData.fpnRowSpan
-            readonly property bool fpnPressed: fpnRoot.fpnPressedAny(modelData.fpnKey, modelData.fpnNumpad, modelData.fpnToken, modelData.fpnTokens)
+            readonly property string fpnEditToken: fpnRoot.fpnKeyToken(modelData)
+            readonly property string fpnBindingLabel: fpnRoot.fpnKeyboardMapper.fpnKeyboardLayout.length >= 0
+                    ? fpnRoot.fpnKeyboardMapper.fpnBindingLabelForToken(fpnEditToken) : ""
+            readonly property bool fpnPressed: fpnRoot.fpnPressedAny(modelData.fpnKey, modelData.fpnNumpad, fpnEditToken, modelData.fpnTokens)
+                    || fpnRoot.fpnActiveQtKeys[fpnEditToken] === true
+            readonly property bool fpnSelected: fpnRoot.fpnSelectedToken === fpnEditToken
 
             x: modelData.fpnColumn * (fpnRoot.fpnUnitWidth + fpnRoot.fpnKeySpacing)
             y: modelData.fpnRow * (fpnRoot.fpnKeyHeight + fpnRoot.fpnKeySpacing)
@@ -158,17 +233,103 @@ Item {
             height: fpnRoot.fpnKeyHeight * fpnRowSpan + fpnRoot.fpnKeySpacing * Math.max(0, fpnRowSpan - 1)
             radius: FpnTheme.fpnRadiusMedium
             color: fpnPressed ? FpnTheme.fpnAccentSoftColor : FpnTheme.fpnPanelColor
-            border.color: fpnPressed ? FpnTheme.fpnAccentColor : FpnTheme.fpnBorderColor
-            border.width: 1
+            border.color: fpnSelected ? FpnTheme.fpnDangerColor : (fpnPressed ? FpnTheme.fpnAccentColor : FpnTheme.fpnBorderColor)
+            border.width: fpnSelected ? 2 : 1
+
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.RightButton
+                onClicked: mouse => {
+                    if (mouse.button !== Qt.RightButton) {
+                        return
+                    }
+                    fpnRoot.fpnOpenEditor(fpnEditToken, fpnKeyRect.x, fpnKeyRect.y, fpnKeyRect.width, fpnKeyRect.height)
+                }
+            }
 
             Text {
-                anchors.centerIn: parent
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top
+                anchors.topMargin: Math.max(2, FpnTheme.fpnSpaceXs)
                 width: Math.max(0, parent.width - FpnTheme.fpnSpaceS)
                 text: modelData.fpnLabel
                 color: FpnTheme.fpnTextColor
                 font.pixelSize: Math.max(FpnTheme.fpnFontPixelSize(10), Math.min(FpnTheme.fpnFontPixelSize(12), parent.width / Math.max(1, text.length) * 1.35))
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
+            }
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: Math.max(2, FpnTheme.fpnSpaceXs)
+                width: Math.max(0, parent.width - FpnTheme.fpnSpaceS)
+                text: fpnBindingLabel
+                color: fpnBindingLabel.length > 0 ? FpnTheme.fpnAccentColor : FpnTheme.fpnMutedTextColor
+                font.pixelSize: Math.max(FpnTheme.fpnFontPixelSize(8), Math.min(FpnTheme.fpnFontPixelSize(10), parent.width / Math.max(1, text.length) * 1.25))
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideRight
+            }
+        }
+    }
+
+    Rectangle {
+        id: fpnEditorPanel
+
+        x: fpnRoot.fpnEditorX
+        y: fpnRoot.fpnEditorY
+        z: 10
+        width: fpnRoot.fpnEditorWidth
+        height: fpnRoot.fpnEditorHeight
+        visible: fpnRoot.fpnSelectedToken.length > 0
+        radius: FpnTheme.fpnRadiusMedium
+        color: FpnTheme.fpnPanelAltColor
+        border.color: FpnTheme.fpnStrongBorderColor
+
+        Row {
+            anchors.fill: parent
+            anchors.margins: FpnTheme.fpnSpaceM
+            spacing: FpnTheme.fpnSpaceS
+
+            Label {
+                width: 78
+                height: FpnTheme.fpnToolbarControlHeight
+                text: fpnRoot.fpnKeyboardMapper.fpnNoteName(fpnRoot.fpnSelectedNote)
+                color: FpnTheme.fpnTextColor
+                font.pixelSize: FpnTheme.fpnFontPixelSize(13)
+                verticalAlignment: Text.AlignVCenter
+                elide: Text.ElideRight
+            }
+
+            SpinBox {
+                width: 92
+                height: FpnTheme.fpnToolbarControlHeight
+                from: 0
+                to: 127
+                value: fpnRoot.fpnSelectedNote
+                onValueModified: fpnRoot.fpnSelectedNote = value
+            }
+
+            Button {
+                width: 72
+                height: FpnTheme.fpnToolbarControlHeight
+                text: qsTr("Set")
+                font.pixelSize: FpnTheme.fpnFontPixelSize(12)
+                onClicked: {
+                    fpnRoot.fpnKeyboardMapper.fpnSetKeyNoteByToken(fpnRoot.fpnSelectedToken, fpnRoot.fpnSelectedNote)
+                    fpnRoot.fpnSelectedToken = ""
+                }
+            }
+
+            Button {
+                width: 72
+                height: FpnTheme.fpnToolbarControlHeight
+                text: qsTr("Clear")
+                font.pixelSize: FpnTheme.fpnFontPixelSize(12)
+                onClicked: {
+                    fpnRoot.fpnKeyboardMapper.fpnClearKeyBindingByToken(fpnRoot.fpnSelectedToken)
+                    fpnRoot.fpnSelectedToken = ""
+                }
             }
         }
     }

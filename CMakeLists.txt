@@ -18,7 +18,7 @@ set(VST3_SDK_LIB_DIR "${VST3_SDK_ROOT}/lib/Release" CACHE PATH "Steinberg VST3 S
 set(DEFAULT_VST3_BUNDLE "${VST3_SDK_ROOT}/plugins/mda-vst3.vst3" CACHE PATH "Default mda Piano VST3 bundle")
 set(USER_VST_PLUGINS_DIR "${CMAKE_SOURCE_DIR}/vstplugs" CACHE PATH "Local third-party VST plug-in directory")
 
-find_package(Qt6 6.6 REQUIRED COMPONENTS Quick QuickControls2)
+find_package(Qt6 6.6 REQUIRED COMPONENTS Quick QuickControls2 Test)
 
 qt_standard_project_setup(REQUIRES 6.6)
 qt_policy(SET QTP0004 NEW)
@@ -62,6 +62,24 @@ target_link_libraries(freepiano-next PRIVATE
     Qt6::Quick
     Qt6::QuickControls2
 )
+
+enable_testing()
+
+qt_add_executable(fpn_keyboard_mapper_tests
+    tests/test_keyboard_input_mapper.cpp
+    src/input/FpnKeyboardInputMapper.cpp
+    src/input/FpnKeyboardInputMapper.h
+)
+
+target_include_directories(fpn_keyboard_mapper_tests PRIVATE
+    src
+)
+
+target_link_libraries(fpn_keyboard_mapper_tests PRIVATE
+    Qt6::Test
+)
+
+add_test(NAME fpn_keyboard_mapper_tests COMMAND fpn_keyboard_mapper_tests)
 
 if(WIN32)
     target_link_libraries(freepiano-next PRIVATE

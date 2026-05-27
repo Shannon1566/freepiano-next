@@ -7,6 +7,7 @@ Item {
 
     required property var fpnActiveKeyboardNotes
     required property var fpnActiveQtKeys
+    required property var fpnKeyboardMapper
 
     signal fpnPianoKeyPressed(int fpnNote)
     signal fpnPianoKeyReleased(int fpnNote)
@@ -25,6 +26,7 @@ Item {
         fpnCompact: fpnRoot.fpnCompact
         fpnActiveKeyboardNotes: fpnRoot.fpnActiveKeyboardNotes
         fpnActiveQtKeys: fpnRoot.fpnActiveQtKeys
+        fpnKeyboardMapper: fpnRoot.fpnKeyboardMapper
         onFpnPianoKeyPressed: fpnNote => fpnRoot.fpnPianoKeyPressed(fpnNote)
         onFpnPianoKeyReleased: fpnNote => fpnRoot.fpnPianoKeyReleased(fpnNote)
     }

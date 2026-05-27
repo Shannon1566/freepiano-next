@@ -8,6 +8,7 @@ Rectangle {
 
     required property var fpnActiveKeyboardNotes
     required property var fpnActiveQtKeys
+    required property var fpnKeyboardMapper
     property bool fpnCompact: false
 
     signal fpnPianoKeyPressed(int fpnNote)
@@ -38,6 +39,7 @@ Rectangle {
             Layout.preferredHeight: fpnRoot.fpnCompact ? 190 : 250
             Layout.maximumHeight: fpnRoot.fpnCompact ? 210 : 280
             fpnActiveQtKeys: fpnRoot.fpnActiveQtKeys
+            fpnKeyboardMapper: fpnRoot.fpnKeyboardMapper
         }
     }
 }
