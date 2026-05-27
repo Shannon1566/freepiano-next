@@ -1,4 +1,5 @@
 import QtQuick
+import FreePiano
 
 Rectangle {
     id: fpnRoot
@@ -13,9 +14,9 @@ Rectangle {
     signal fpnKeyPressed(int fpnNote)
     signal fpnKeyReleased(int fpnNote)
 
-    radius: fpnBlackKey ? 3 : 5
-    color: fpnPressed ? (fpnBlackKey ? "#334155" : "#dbeafe") : (fpnBlackKey ? "#111827" : "#f8fafc")
-    border.color: fpnBlackKey ? "#020617" : "#94a3b8"
+    radius: fpnBlackKey ? FpnTheme.fpnRadiusSmall : FpnTheme.fpnRadiusMedium
+    color: fpnPressed ? (fpnBlackKey ? "#334155" : FpnTheme.fpnAccentSoftColor) : (fpnBlackKey ? "#111827" : FpnTheme.fpnPanelAltColor)
+    border.color: fpnBlackKey ? "#020617" : FpnTheme.fpnStrongBorderColor
     border.width: 1
 
     Text {
@@ -23,8 +24,8 @@ Rectangle {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: fpnRoot.fpnBlackKey ? 8 : 12
         text: fpnRoot.fpnLabel
-        color: fpnRoot.fpnBlackKey ? "#e5e7eb" : "#334155"
-        font.pixelSize: fpnRoot.fpnBlackKey ? 9 : 10
+        color: fpnRoot.fpnBlackKey ? "#e5e7eb" : FpnTheme.fpnMutedTextColor
+        font.pixelSize: FpnTheme.fpnFontPixelSize(fpnRoot.fpnBlackKey ? 9 : 10)
         horizontalAlignment: Text.AlignHCenter
         visible: text.length > 0
     }

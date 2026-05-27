@@ -1,18 +1,23 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import FreePiano
 
 ApplicationWindow {
     id: fpnWindow
 
+    minimumWidth: FpnTheme.fpnWindowMinimumWidth
+    minimumHeight: FpnTheme.fpnWindowMinimumHeight
     width: 1280
-    height: 620
+    height: 720
     visible: true
     title: qsTr("freepiano-next")
-    color: "#f1f5f9"
+    color: FpnTheme.fpnWindowColor
 
     property var fpnActiveKeyboardNotes: ({})
     property var fpnActiveQtKeys: ({})
+
+    readonly property bool fpnCompact: width < FpnTheme.fpnBreakpointCompact
 
     FocusScope {
         id: fpnFocusScope
@@ -132,79 +137,29 @@ ApplicationWindow {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 24
-            spacing: 16
+            anchors.margins: FpnTheme.fpnSpaceL
+            spacing: FpnTheme.fpnSpaceL
 
-            RowLayout {
+            FpnControlBar {
                 Layout.fillWidth: true
-                spacing: 12
-
-                Label {
-                    Layout.fillWidth: true
-                    text: fpnPianoController.fpnStatusText
-                    elide: Text.ElideRight
-                    color: "#0f172a"
-                }
-
-                ComboBox {
-                    id: fpnInstrumentBox
-
-                    Layout.preferredWidth: 240
-                    model: fpnPianoController.fpnAvailableInstruments
-                    currentIndex: fpnPianoController.fpnCurrentInstrumentIndex
-                    textRole: ""
-                    enabled: count > 0
-                    onActivated: index => {
-                        fpnPianoController.fpnLoadInstrument(index)
-                        fpnFocusScope.forceActiveFocus()
-                    }
-
-                    Connections {
-                        target: fpnPianoController
-                        function onFpnCurrentInstrumentChanged() {
-                            fpnInstrumentBox.currentIndex = fpnPianoController.fpnCurrentInstrumentIndex
-                        }
-                        function onFpnAvailableInstrumentsChanged() {
-                            fpnInstrumentBox.currentIndex = fpnPianoController.fpnCurrentInstrumentIndex
-                        }
-                    }
-                }
-
-                Button {
-                    text: qsTr("Refresh")
-                    onClicked: {
-                        fpnPianoController.fpnRefreshInstruments()
-                        fpnFocusScope.forceActiveFocus()
-                    }
-                }
-
-                Button {
-                    text: qsTr("Load")
-                    onClicked: fpnPianoController.fpnLoadDefaultInstrument()
-                }
-
-                Button {
-                    text: qsTr("Panic")
-                    onClicked: {
-                        fpnPianoController.fpnPanic()
-                        fpnFocusScope.fpnClearPressedState()
-                    }
+                Layout.preferredHeight: FpnTheme.fpnHeaderHeight
+                fpnController: fpnPianoController
+                fpnCompact: fpnWindow.fpnCompact
+                onFpnActionFinished: fpnFocusScope.forceActiveFocus()
+                onFpnPanicRequested: {
+                    fpnPianoController.fpnPanic()
+                    fpnFocusScope.fpnClearPressedState()
+                    fpnFocusScope.forceActiveFocus()
                 }
             }
 
-            FpnPianoKeyboard {
+            FpnResponsiveWorkspace {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.minimumHeight: 210
-                fpnActiveNotes: fpnWindow.fpnActiveKeyboardNotes
-                onFpnKeyPressed: fpnNote => fpnPianoController.fpnNoteOn(fpnNote, 100)
-                onFpnKeyReleased: fpnNote => fpnPianoController.fpnNoteOff(fpnNote)
-            }
-
-            FpnComputerKeyboard {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 234
+                fpnActiveKeyboardNotes: fpnWindow.fpnActiveKeyboardNotes
                 fpnActiveQtKeys: fpnWindow.fpnActiveQtKeys
+                onFpnPianoKeyPressed: fpnNote => fpnPianoController.fpnNoteOn(fpnNote, 100)
+                onFpnPianoKeyReleased: fpnNote => fpnPianoController.fpnNoteOff(fpnNote)
             }
         }
 

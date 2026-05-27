@@ -1,10 +1,12 @@
 import QtQuick
+import FreePiano
 
 Item {
     id: fpnRoot
 
     property var fpnActiveNotes: ({})
-    property real fpnWhiteKeyWidth: 36
+    readonly property real fpnPreferredWhiteKeyWidth: 36
+    readonly property real fpnWhiteKeyWidth: Math.max(24, Math.min(fpnPreferredWhiteKeyWidth, width / Math.max(1, fpnWhiteKeyCount)))
 
     signal fpnKeyPressed(int fpnNote)
     signal fpnKeyReleased(int fpnNote)
@@ -13,6 +15,8 @@ Item {
     readonly property var fpnBlackNotes: fpnBuildKeys(true)
     readonly property int fpnWhiteKeyCount: fpnWhiteNotes.length
     readonly property real fpnBlackKeyWidth: fpnWhiteKeyWidth * 0.62
+    implicitWidth: fpnWhiteKeyCount * fpnPreferredWhiteKeyWidth
+    implicitHeight: 260
 
     function fpnIsBlackNote(fpnNote) {
         const fpnPitch = fpnNote % 12

@@ -18,9 +18,10 @@ set(VST3_SDK_LIB_DIR "${VST3_SDK_ROOT}/lib/Release" CACHE PATH "Steinberg VST3 S
 set(DEFAULT_VST3_BUNDLE "${VST3_SDK_ROOT}/plugins/mda-vst3.vst3" CACHE PATH "Default mda Piano VST3 bundle")
 set(USER_VST_PLUGINS_DIR "${CMAKE_SOURCE_DIR}/vstplugs" CACHE PATH "Local third-party VST plug-in directory")
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Quick QuickControls2)
+find_package(Qt6 6.6 REQUIRED COMPONENTS Quick QuickControls2)
 
-qt_standard_project_setup(REQUIRES 6.5)
+qt_standard_project_setup(REQUIRES 6.6)
+qt_policy(SET QTP0004 NEW)
 
 qt_add_executable(freepiano-next
     src/main.cpp
@@ -96,14 +97,21 @@ if(IS_DIRECTORY "${USER_VST_PLUGINS_DIR}")
     )
 endif()
 
+set_source_files_properties(qml/FpnTheme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+
 qt_add_qml_module(freepiano-next
     URI FreePiano
     VERSION 1.0
     QML_FILES
         qml/Main.qml
+        qml/FpnControlBar.qml
         qml/FpnComputerKeyboard.qml
+        qml/FpnMainContent.qml
         qml/FpnPianoKey.qml
         qml/FpnPianoKeyboard.qml
+        qml/FpnResponsiveWorkspace.qml
+        qml/FpnSidebar.qml
+        qml/FpnTheme.qml
 )
 
 if(WIN32 AND FREEPIANO_DEPLOY_QT_RUNTIME)

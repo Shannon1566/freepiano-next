@@ -1,16 +1,18 @@
 import QtQuick
+import FreePiano
 
 Item {
     id: fpnRoot
 
     property var fpnActiveQtKeys: ({})
 
-    readonly property real fpnKeySpacing: 5
+    readonly property real fpnKeySpacing: FpnTheme.fpnSpaceXs
     readonly property real fpnTotalColumns: 24
-    readonly property real fpnUnitWidth: Math.max(32, Math.min(42, (width - fpnKeySpacing * (fpnTotalColumns - 1)) / fpnTotalColumns))
-    readonly property real fpnKeyHeight: 34
-    implicitWidth: fpnTotalColumns * fpnUnitWidth + (fpnTotalColumns - 1) * fpnKeySpacing
-    implicitHeight: fpnKeyHeight * 6 + fpnKeySpacing * 5
+    readonly property int fpnTotalRows: 6
+    readonly property real fpnUnitWidth: Math.max(26, (width - fpnKeySpacing * (fpnTotalColumns - 1)) / fpnTotalColumns)
+    readonly property real fpnKeyHeight: Math.max(28, Math.min(40, (height - fpnKeySpacing * (fpnTotalRows - 1)) / fpnTotalRows))
+    implicitWidth: 760
+    implicitHeight: fpnKeyHeight * fpnTotalRows + fpnKeySpacing * (fpnTotalRows - 1)
 
     readonly property var fpnKeys: [
         { "fpnLabel": "Esc", "fpnKey": Qt.Key_Escape, "fpnColumn": 0, "fpnRow": 0, "fpnColumnSpan": 1.2 },
@@ -148,22 +150,23 @@ Item {
 
             readonly property real fpnColumnSpan: modelData.fpnColumnSpan === undefined ? 1 : modelData.fpnColumnSpan
             readonly property real fpnRowSpan: modelData.fpnRowSpan === undefined ? 1 : modelData.fpnRowSpan
+            readonly property bool fpnPressed: fpnRoot.fpnPressedAny(modelData.fpnKey, modelData.fpnNumpad, modelData.fpnToken, modelData.fpnTokens)
 
             x: modelData.fpnColumn * (fpnRoot.fpnUnitWidth + fpnRoot.fpnKeySpacing)
             y: modelData.fpnRow * (fpnRoot.fpnKeyHeight + fpnRoot.fpnKeySpacing)
-            width: fpnRoot.fpnUnitWidth * fpnColumnSpan + fpnRoot.fpnKeySpacing * Math.max(0, Math.ceil(fpnColumnSpan) - 1)
-            height: fpnRoot.fpnKeyHeight * fpnRowSpan + fpnRoot.fpnKeySpacing * (fpnRowSpan - 1)
-            radius: 5
-            color: fpnRoot.fpnPressedAny(modelData.fpnKey, modelData.fpnNumpad, modelData.fpnToken, modelData.fpnTokens) ? "#bfdbfe" : "#ffffff"
-            border.color: fpnRoot.fpnPressedAny(modelData.fpnKey, modelData.fpnNumpad, modelData.fpnToken, modelData.fpnTokens) ? "#2563eb" : "#cbd5e1"
+            width: fpnRoot.fpnUnitWidth * fpnColumnSpan + fpnRoot.fpnKeySpacing * Math.max(0, fpnColumnSpan - 1)
+            height: fpnRoot.fpnKeyHeight * fpnRowSpan + fpnRoot.fpnKeySpacing * Math.max(0, fpnRowSpan - 1)
+            radius: FpnTheme.fpnRadiusMedium
+            color: fpnPressed ? FpnTheme.fpnAccentSoftColor : FpnTheme.fpnPanelColor
+            border.color: fpnPressed ? FpnTheme.fpnAccentColor : FpnTheme.fpnBorderColor
             border.width: 1
 
             Text {
                 anchors.centerIn: parent
-                width: parent.width - 8
+                width: Math.max(0, parent.width - FpnTheme.fpnSpaceS)
                 text: modelData.fpnLabel
-                color: "#0f172a"
-                font.pixelSize: Math.min(12, parent.width / Math.max(1, text.length) * 1.45)
+                color: FpnTheme.fpnTextColor
+                font.pixelSize: Math.max(FpnTheme.fpnFontPixelSize(10), Math.min(FpnTheme.fpnFontPixelSize(12), parent.width / Math.max(1, text.length) * 1.35))
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
             }
